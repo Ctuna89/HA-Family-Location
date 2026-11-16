@@ -1,0 +1,239 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Crear un círculo",
+        "description": "Un círculo es un grupo de personas que comparten su ubicación (como en Life360). La ubicación se toma de la app de Home Assistant en el celular de cada uno. Después podrás agregar lugares (casa, trabajo, colegio…) desde la página de la integración.",
+        "data": {
+          "name": "Nombre del círculo",
+          "members": "Integrantes",
+          "add_home": "Agregar «Casa» como primer lugar"
+        },
+        "data_description": {
+          "members": "Personas (o rastreadores) de Home Assistant. Para cada una se detecta sola la notificación de su celular.",
+          "add_home": "Usa tu zona Casa: avisará cuando alguien llegue o salga."
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Avisos y detección de viajes",
+        "data": {
+          "notify_speeding": "Avisar excesos de velocidad",
+          "notify_battery": "Avisar batería baja",
+          "low_battery": "Umbral de batería baja",
+          "notify_trips": "Avisar cuando alguien empieza y termina un viaje",
+          "safety_recipients": "Quién recibe los avisos de velocidad, batería y viajes",
+          "notify_self": "Enviarme también mis propios avisos",
+          "reverse_geocode": "Mostrar la dirección cuando alguien está fuera de sus lugares",
+          "moving_speed": "Velocidad para considerar «en movimiento»",
+          "driving_speed": "Velocidad para considerar «conduciendo»",
+          "stop_minutes": "Minutos detenido para terminar un viaje",
+          "start_distance": "Distancia desde el punto de reposo para empezar un viaje",
+          "max_accuracy": "Ignorar posiciones con precisión peor que"
+        },
+        "data_description": {
+          "safety_recipients": "Vacío = todos los demás integrantes.",
+          "reverse_geocode": "Consulta OpenStreetMap con la posición (solo cuando la persona está detenida fuera de sus lugares).",
+          "max_accuracy": "Evita avisos falsos por ubicaciones imprecisas (por ejemplo, por antenas de celular).",
+          "stop_minutes": "Un viaje termina recién tras estos minutos sin moverse: un semáforo o un taco no lo cortan."
+        }
+      }
+    }
+  },
+  "config_subentries": {
+    "member": {
+      "initiate_flow": {
+        "user": "Añadir integrante"
+      },
+      "entry_type": "Integrante",
+      "step": {
+        "user": {
+          "title": "Añadir integrante",
+          "description": "Elige a la persona y el celular al que se le envían los avisos del círculo.",
+          "data": {
+            "entity_id": "Persona o rastreador",
+            "name": "Nombre a mostrar",
+            "notify": "Notificaciones a su celular",
+            "receive_alerts": "Recibe los avisos del círculo",
+            "speed_limit": "Avisar si supera esta velocidad"
+          },
+          "data_description": {
+            "notify": "Servicio notify.mobile_app_… de su teléfono. Puedes elegir más de uno.",
+            "speed_limit": "0 = sin aviso de velocidad.",
+            "name": "Vacío = el nombre de la persona."
+          }
+        },
+        "reconfigure": {
+          "title": "Editar integrante",
+          "data": {
+            "entity_id": "Persona o rastreador",
+            "name": "Nombre a mostrar",
+            "notify": "Notificaciones a su celular",
+            "receive_alerts": "Recibe los avisos del círculo",
+            "speed_limit": "Avisar si supera esta velocidad"
+          },
+          "data_description": {
+            "notify": "Servicio notify.mobile_app_… de su teléfono. Puedes elegir más de uno.",
+            "speed_limit": "0 = sin aviso de velocidad.",
+            "name": "Vacío = el nombre de la persona."
+          }
+        }
+      },
+      "error": {
+        "already_member": "Esa persona ya está en el círculo."
+      },
+      "abort": {
+        "reconfigure_successful": "Integrante actualizado."
+      }
+    },
+    "place": {
+      "initiate_flow": {
+        "user": "Añadir lugar"
+      },
+      "entry_type": "Lugar",
+      "step": {
+        "user": {
+          "title": "Añadir lugar",
+          "description": "Escribe la dirección (por ejemplo «Av. Apoquindo 3000, Las Condes»), o elige una zona que ya tengas. Si dejas ambas vacías, lo marcas en el mapa.",
+          "data": {
+            "name": "Nombre del lugar",
+            "address": "Dirección",
+            "zone": "O usar una zona de Home Assistant",
+            "radius": "Radio"
+          },
+          "data_description": {
+            "name": "Por ejemplo: Casa, Trabajo, Colegio, Casa de la abuela.",
+            "radius": "Qué tan lejos del punto se considera que llegó. 100–200 m funciona bien para una casa."
+          }
+        },
+        "reconfigure": {
+          "title": "Editar lugar",
+          "description": "Cambia la dirección para buscarla de nuevo, o deja la misma para ajustar el punto en el mapa.",
+          "data": {
+            "name": "Nombre del lugar",
+            "address": "Dirección",
+            "zone": "O usar una zona de Home Assistant",
+            "radius": "Radio"
+          }
+        },
+        "location": {
+          "title": "Confirma la ubicación de {name}",
+          "description": "Encontré: {found}\n\nMueve el marcador si no está justo en el lugar, y ajusta el círculo.",
+          "data": {
+            "location": "Ubicación y radio"
+          }
+        },
+        "alerts": {
+          "title": "Avisos de {name}",
+          "description": "Por ejemplo: «Jaime llegó a {name}».",
+          "data": {
+            "notify_arrive": "Avisar cuando alguien llega",
+            "notify_leave": "Avisar cuando alguien sale",
+            "watch": "Solo para estos integrantes",
+            "recipients": "Enviar los avisos a",
+            "arrive_instant": "Avisar apenas entra"
+          },
+          "data_description": {
+            "watch": "Vacío = todos los integrantes.",
+            "recipients": "Vacío = todos los demás integrantes.",
+            "arrive_instant": "Actívalo para Casa. Si está apagado, la llegada se avisa recién cuando la persona se queda detenida ahí (el viaje termina tras los minutos detenido configurados); pasar cerca o parar en un semáforo no cuenta."
+          }
+        }
+      },
+      "error": {
+        "address_not_found": "No encontré esa dirección. Prueba agregando la comuna o ciudad, o déjala vacía y márcala en el mapa."
+      },
+      "abort": {
+        "reconfigure_successful": "Lugar actualizado."
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "place": {
+        "name": "Lugar"
+      },
+      "status": {
+        "name": "Estado",
+        "state": {
+          "quieto": "Quieto",
+          "en_movimiento": "En movimiento",
+          "conduciendo": "Conduciendo",
+          "desconocido": "Desconocido"
+        }
+      },
+      "speed": {
+        "name": "Velocidad"
+      },
+      "battery": {
+        "name": "Batería del teléfono"
+      },
+      "distance_today": {
+        "name": "Distancia hoy"
+      },
+      "last_trip": {
+        "name": "Último viaje"
+      },
+      "people": {
+        "name": "Personas"
+      }
+    },
+    "binary_sensor": {
+      "moving": {
+        "name": "En movimiento"
+      },
+      "speeding": {
+        "name": "Exceso de velocidad"
+      },
+      "occupied": {
+        "name": "Hay alguien"
+      }
+    },
+    "button": {
+      "check_in": {
+        "name": "Check-in"
+      },
+      "sos": {
+        "name": "Pedir ayuda"
+      }
+    }
+  },
+  "services": {
+    "check_in": {
+      "name": "Check-in",
+      "description": "Avisa al círculo dónde está una persona.",
+      "fields": {
+        "entity_id": {
+          "name": "Persona",
+          "description": "Integrante del círculo."
+        },
+        "message": {
+          "name": "Mensaje",
+          "description": "Texto opcional que se agrega al aviso."
+        }
+      }
+    },
+    "sos": {
+      "name": "Pedir ayuda",
+      "description": "Envía una alerta urgente a todo el círculo con la ubicación de la persona.",
+      "fields": {
+        "entity_id": {
+          "name": "Persona",
+          "description": "Integrante del círculo."
+        },
+        "message": {
+          "name": "Mensaje",
+          "description": "Texto opcional que se agrega al aviso."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "not_a_member": {
+      "message": "{entity_id} no es integrante de ningún círculo."
+    }
+  }
+}

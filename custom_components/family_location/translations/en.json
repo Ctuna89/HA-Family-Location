@@ -1,0 +1,239 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Create a circle",
+        "description": "A circle is a group of people sharing their location (like Life360). Location comes from the Home Assistant app on each phone. You can add places (home, work, school…) from the integration page afterwards.",
+        "data": {
+          "name": "Circle name",
+          "members": "Members",
+          "add_home": "Add «Home» as the first place"
+        },
+        "data_description": {
+          "members": "Home Assistant persons (or trackers). Each phone's notification service is detected automatically.",
+          "add_home": "Uses your Home zone: alerts when someone arrives or leaves."
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Alerts and trip detection",
+        "data": {
+          "notify_speeding": "Alert on speeding",
+          "notify_battery": "Alert on low battery",
+          "low_battery": "Low battery threshold",
+          "notify_trips": "Alert when someone starts and finishes a trip",
+          "safety_recipients": "Who receives speed, battery and trip alerts",
+          "notify_self": "Also send me my own alerts",
+          "reverse_geocode": "Show the address when someone is away from their places",
+          "moving_speed": "Speed to consider «moving»",
+          "driving_speed": "Speed to consider «driving»",
+          "stop_minutes": "Minutes stopped to end a trip",
+          "start_distance": "Distance from resting point to start a trip",
+          "max_accuracy": "Ignore positions less accurate than"
+        },
+        "data_description": {
+          "safety_recipients": "Empty = every other member.",
+          "reverse_geocode": "Queries OpenStreetMap with the position (only when the person is stopped away from their places).",
+          "max_accuracy": "Avoids false alerts from inaccurate locations (e.g. cell towers).",
+          "stop_minutes": "A trip ends only after this many minutes without moving: a traffic light or a jam doesn't end it."
+        }
+      }
+    }
+  },
+  "config_subentries": {
+    "member": {
+      "initiate_flow": {
+        "user": "Add member"
+      },
+      "entry_type": "Member",
+      "step": {
+        "user": {
+          "title": "Add member",
+          "description": "Pick the person and the phone that receives the circle's alerts.",
+          "data": {
+            "entity_id": "Person or tracker",
+            "name": "Display name",
+            "notify": "Phone notifications",
+            "receive_alerts": "Receives the circle's alerts",
+            "speed_limit": "Alert above this speed"
+          },
+          "data_description": {
+            "notify": "notify.mobile_app_… service of their phone. You can pick more than one.",
+            "speed_limit": "0 = no speed alert.",
+            "name": "Empty = the person's name."
+          }
+        },
+        "reconfigure": {
+          "title": "Edit member",
+          "data": {
+            "entity_id": "Person or tracker",
+            "name": "Display name",
+            "notify": "Phone notifications",
+            "receive_alerts": "Receives the circle's alerts",
+            "speed_limit": "Alert above this speed"
+          },
+          "data_description": {
+            "notify": "notify.mobile_app_… service of their phone. You can pick more than one.",
+            "speed_limit": "0 = no speed alert.",
+            "name": "Empty = the person's name."
+          }
+        }
+      },
+      "error": {
+        "already_member": "That person is already in the circle."
+      },
+      "abort": {
+        "reconfigure_successful": "Member updated."
+      }
+    },
+    "place": {
+      "initiate_flow": {
+        "user": "Add place"
+      },
+      "entry_type": "Place",
+      "step": {
+        "user": {
+          "title": "Add place",
+          "description": "Type the address (e.g. «1600 Amphitheatre Pkwy, Mountain View»), or pick an existing zone. Leave both empty to mark it on the map.",
+          "data": {
+            "name": "Place name",
+            "address": "Address",
+            "zone": "Or use a Home Assistant zone",
+            "radius": "Radius"
+          },
+          "data_description": {
+            "name": "For example: Home, Work, School.",
+            "radius": "How far from the point counts as arrived. 100–200 m works well for a house."
+          }
+        },
+        "reconfigure": {
+          "title": "Edit place",
+          "description": "Change the address to look it up again, or keep it to adjust the point on the map.",
+          "data": {
+            "name": "Place name",
+            "address": "Address",
+            "zone": "Or use a Home Assistant zone",
+            "radius": "Radius"
+          }
+        },
+        "location": {
+          "title": "Confirm the location of {name}",
+          "description": "Found: {found}\n\nMove the marker if it is not exactly on the place, and adjust the circle.",
+          "data": {
+            "location": "Location and radius"
+          }
+        },
+        "alerts": {
+          "title": "Alerts for {name}",
+          "description": "For example: «Jaime arrived at {name}».",
+          "data": {
+            "notify_arrive": "Alert when someone arrives",
+            "notify_leave": "Alert when someone leaves",
+            "watch": "Only for these members",
+            "recipients": "Send alerts to",
+            "arrive_instant": "Alert as soon as they enter"
+          },
+          "data_description": {
+            "watch": "Empty = every member.",
+            "recipients": "Empty = every other member.",
+            "arrive_instant": "Turn on for Home. When off, the arrival is announced only once the person stays stopped there (the trip ends after the configured minutes stopped); driving past or stopping at a light doesn't count."
+          }
+        }
+      },
+      "error": {
+        "address_not_found": "Address not found. Try adding the city, or leave it empty and mark it on the map."
+      },
+      "abort": {
+        "reconfigure_successful": "Place updated."
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "place": {
+        "name": "Place"
+      },
+      "status": {
+        "name": "Status",
+        "state": {
+          "quieto": "Still",
+          "en_movimiento": "Moving",
+          "conduciendo": "Driving",
+          "desconocido": "Unknown"
+        }
+      },
+      "speed": {
+        "name": "Speed"
+      },
+      "battery": {
+        "name": "Phone battery"
+      },
+      "distance_today": {
+        "name": "Distance today"
+      },
+      "last_trip": {
+        "name": "Last trip"
+      },
+      "people": {
+        "name": "People"
+      }
+    },
+    "binary_sensor": {
+      "moving": {
+        "name": "Moving"
+      },
+      "speeding": {
+        "name": "Speeding"
+      },
+      "occupied": {
+        "name": "Occupied"
+      }
+    },
+    "button": {
+      "check_in": {
+        "name": "Check in"
+      },
+      "sos": {
+        "name": "Ask for help"
+      }
+    }
+  },
+  "services": {
+    "check_in": {
+      "name": "Check in",
+      "description": "Tells the circle where a person is.",
+      "fields": {
+        "entity_id": {
+          "name": "Person",
+          "description": "Circle member."
+        },
+        "message": {
+          "name": "Message",
+          "description": "Optional text added to the alert."
+        }
+      }
+    },
+    "sos": {
+      "name": "Ask for help",
+      "description": "Sends an urgent alert to the whole circle with the person's location.",
+      "fields": {
+        "entity_id": {
+          "name": "Person",
+          "description": "Circle member."
+        },
+        "message": {
+          "name": "Message",
+          "description": "Optional text added to the alert."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "not_a_member": {
+      "message": "{entity_id} is not a member of any circle."
+    }
+  }
+}

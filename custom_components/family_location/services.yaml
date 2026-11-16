@@ -1,0 +1,27 @@
+check_in:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          domain:
+            - person
+            - device_tracker
+    message:
+      required: false
+      selector:
+        text:
+
+sos:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          domain:
+            - person
+            - device_tracker
+    message:
+      required: false
+      selector:
+        text:

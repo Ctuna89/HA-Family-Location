@@ -1,0 +1,6 @@
+{
+  "services": {
+    "check_in": {"service": "mdi:map-marker-check"},
+    "sos": {"service": "mdi:alarm-light"}
+  }
+}

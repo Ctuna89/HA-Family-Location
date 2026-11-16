@@ -1,0 +1,79 @@
+"""Family Location: un reemplazo de Life360 que funciona dentro de Home Assistant.
+
+La ubicación viene de la app Companion de Home Assistant (o de cualquier rastreador). Lugares, viajes,
+excesos de velocidad y avisos se calculan localmente; la ubicación no sale de tu Home Assistant salvo para
+buscar direcciones en OpenStreetMap si activas esa opción.
+"""
+
+from __future__ import annotations
+
+import voluptuous as vol
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import ATTR_ENTITY_ID, Platform
+from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ServiceValidationError
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.typing import ConfigType
+
+from .const import DOMAIN
+from .engine import CircleEngine
+
+PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.BUTTON]
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+type FamilyLocationConfigEntry = ConfigEntry[CircleEngine]
+
+ATTR_MESSAGE = "message"
+SERVICE_SCHEMA = vol.Schema({
+    vol.Required(ATTR_ENTITY_ID): cv.entity_id,
+    vol.Optional(ATTR_MESSAGE, default=""): cv.string,
+})
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Acciones «check-in» y «pedir ayuda»."""
+
+    async def _run(call: ServiceCall, sos: bool) -> None:
+        entity_id = call.data[ATTR_ENTITY_ID]
+        for entry in hass.config_entries.async_loaded_entries(DOMAIN):
+            engine: CircleEngine = entry.runtime_data
+            member = engine.member_by_entity(entity_id)
+            if member is not None:
+                await engine.async_check_in(member.id, call.data[ATTR_MESSAGE], sos=sos)
+                return
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="not_a_member",
+            translation_placeholders={"entity_id": entity_id},
+        )
+
+    async def check_in(call: ServiceCall) -> None:
+        await _run(call, sos=False)
+
+    async def sos(call: ServiceCall) -> None:
+        await _run(call, sos=True)
+
+    hass.services.async_register(DOMAIN, "check_in", check_in, schema=SERVICE_SCHEMA)
+    hass.services.async_register(DOMAIN, "sos", sos, schema=SERVICE_SCHEMA)
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: FamilyLocationConfigEntry) -> bool:
+    engine = CircleEngine(hass, entry)
+    entry.runtime_data = engine
+    await engine.async_start()
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    entry.async_on_unload(entry.add_update_listener(_reload))
+    return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: FamilyLocationConfigEntry) -> bool:
+    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unloaded:
+        await entry.runtime_data.async_stop()
+    return unloaded
+
+
+async def _reload(hass: HomeAssistant, entry: FamilyLocationConfigEntry) -> None:
+    """Cambiaron las opciones o se agregó/editó/borró un integrante o lugar."""
+    await hass.config_entries.async_reload(entry.entry_id)
