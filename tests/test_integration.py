@@ -95,6 +95,8 @@ async def test_arrive_leave_speeding_and_entities(hass: HomeAssistant, freezer):
     with patch("custom_components.family_location.engine.geocode.reverse", return_value="Av. Siempre Viva 742"):
         await setup_circle(hass)
         assert hass.states.get("sensor.james_lugar").state == "Casa"
+        # the map card links the person to their member sensors through this attribute
+        assert hass.states.get("sensor.james_lugar").attributes["tracked_entity"] == "device_tracker.james"
         assert hass.states.get("sensor.james_estado").state == "still"
         assert hass.states.get("binary_sensor.casa_hay_alguien").state == "on"
         assert hass.states.get("sensor.casa_personas").state == "2"
