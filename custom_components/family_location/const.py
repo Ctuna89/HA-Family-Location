@@ -4,6 +4,10 @@ from __future__ import annotations
 
 DOMAIN = "family_location"
 
+# Map card, served by the integration and loaded in the frontend
+CARD_URL = "/family_location_static"
+CARD_FILE = "family-location-map-card.js"
+
 # Subentry types
 SUBENTRY_MEMBER = "member"
 SUBENTRY_PLACE = "place"

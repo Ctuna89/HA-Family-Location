@@ -7,6 +7,9 @@ OpenStreetMap when that option is enabled.
 
 from __future__ import annotations
 
+import logging
+from pathlib import Path
+
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
@@ -15,9 +18,12 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.loader import async_get_integration
 
-from .const import DOMAIN
+from .const import CARD_FILE, CARD_URL, DOMAIN
 from .engine import CircleEngine
+
+_LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.BUTTON]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -55,7 +61,26 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     hass.services.async_register(DOMAIN, "check_in", check_in, schema=SERVICE_SCHEMA)
     hass.services.async_register(DOMAIN, "sos", sos, schema=SERVICE_SCHEMA)
+    await _async_register_card(hass)
     return True
+
+
+async def _async_register_card(hass: HomeAssistant) -> None:
+    """Serves the map card and loads it in the frontend, so no dashboard resource has to be added."""
+    if getattr(hass, "http", None) is None:   # e.g. tests without the web server
+        return
+    try:
+        from homeassistant.components.http import StaticPathConfig
+
+        folder = Path(__file__).parent / "frontend"
+        await hass.http.async_register_static_paths([StaticPathConfig(CARD_URL, str(folder), False)])
+        if "frontend" in hass.config.components:
+            from homeassistant.components.frontend import add_extra_js_url
+
+            version = (await async_get_integration(hass, DOMAIN)).version
+            add_extra_js_url(hass, f"{CARD_URL}/{CARD_FILE}?v={version}")
+    except Exception:  # noqa: BLE001 - the card is an extra: never block the integration
+        _LOGGER.exception("Could not register the Family Location map card")
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: FamilyLocationConfigEntry) -> bool:

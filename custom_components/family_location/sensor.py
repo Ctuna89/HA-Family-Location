@@ -61,6 +61,7 @@ class PlaceSensor(MemberEntity, SensorEntity):
         since = t.places.get(ids[0]) if ids else t.away_since
         fix = t.last_fix
         return {
+            "tracked_entity": self.member.entity_id,
             "in_place": bool(ids),
             "zone": zone.entity_id if (zone := self.engine.current_zone(self.member.id)) else None,
             "place_id": ids[0] if ids else None,
