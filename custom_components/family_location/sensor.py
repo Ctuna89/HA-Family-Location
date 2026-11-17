@@ -11,7 +11,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import FamilyLocationConfigEntry
 from .const import AWAY, STATUSES
-from .entity import MemberEntity, PlaceEntity
+from .entity import CircleEntity, MemberEntity, PlaceEntity
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: FamilyLocationConfigEntry,
@@ -25,7 +25,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: FamilyLocationConfigEntr
             BatterySensor(engine, member),
             DistanceTodaySensor(engine, member),
             LastTripSensor(engine, member),
+            DistanceWeekSensor(engine, member),
+            TopSpeedWeekSensor(engine, member),
+            SpeedingWeekSensor(engine, member),
         ], config_subentry_id=member.id)
+    if engine.members:
+        async_add_entities([LeaderboardSensor(engine)])
     for place in engine.places.values():
         async_add_entities([PeopleSensor(engine, place)], config_subentry_id=place.id)
 
@@ -125,7 +130,8 @@ class SpeedSensor(MemberEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        return {"speed_limit_kmh": self.member.speed_limit or None}
+        return {"speed_limit_kmh": self.member.speed_limit or None,
+                "highway_speed_limit_kmh": self.member.highway_limit or None}
 
 
 class BatterySensor(MemberEntity, SensorEntity):
@@ -216,4 +222,92 @@ class PeopleSensor(PlaceEntity, SensorEntity):
             "longitude": p.lon if p else None,
             "radius": p.radius if p else None,
             "zone": self.place.zone,
+        }
+
+
+# ---------------------------------------------------------------------- weekly stats (Monday to Sunday)
+class _WeekSensor(MemberEntity, SensorEntity):
+    @property
+    def available(self) -> bool:
+        return True
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {"week": self.tracker.week, **self.tracker.week_summary(), "last_week": self.tracker.last_week}
+
+
+class DistanceWeekSensor(_WeekSensor):
+    _attr_device_class = SensorDeviceClass.DISTANCE
+    _attr_native_unit_of_measurement = UnitOfLength.KILOMETERS
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_suggested_display_precision = 1
+    _attr_icon = "mdi:map-marker-distance"
+
+    def __init__(self, engine: Any, member: Any) -> None:
+        super().__init__(engine, member, "distance_week")
+
+    @property
+    def native_value(self) -> float:
+        return self.tracker.week_summary()["distance_km"]
+
+
+class TopSpeedWeekSensor(_WeekSensor):
+    _attr_device_class = SensorDeviceClass.SPEED
+    _attr_native_unit_of_measurement = UnitOfSpeed.KILOMETERS_PER_HOUR
+    _attr_suggested_display_precision = 0
+    _attr_icon = "mdi:speedometer"
+
+    def __init__(self, engine: Any, member: Any) -> None:
+        super().__init__(engine, member, "top_speed_week")
+
+    @property
+    def native_value(self) -> int:
+        return self.tracker.week_summary()["max_speed_kmh"]
+
+
+class SpeedingWeekSensor(_WeekSensor):
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_icon = "mdi:speedometer-medium"
+
+    def __init__(self, engine: Any, member: Any) -> None:
+        super().__init__(engine, member, "speeding_week")
+
+    @property
+    def native_value(self) -> int:
+        return self.tracker.week_summary()["speeding"]
+
+
+class LeaderboardSensor(CircleEntity, SensorEntity):
+    """Who drove the most this week; the full ranking (with every weekly stat) is in the attributes."""
+
+    _attr_icon = "mdi:podium-gold"
+
+    def __init__(self, engine: Any) -> None:
+        super().__init__(engine, "leaderboard")
+
+    def _ranking(self) -> list[dict[str, Any]]:
+        rows = [{"name": self.engine.members[mid].name, "entity_id": self.engine.members[mid].entity_id,
+                 **t.week_summary()} for mid, t in self.engine.trackers.items() if mid in self.engine.members]
+        rows.sort(key=lambda r: (-r["distance_km"], r["name"]))
+        for position, row in enumerate(rows, start=1):
+            row["position"] = position
+        return rows
+
+    @property
+    def native_value(self) -> str | None:
+        ranking = self._ranking()
+        return ranking[0]["name"] if ranking and ranking[0]["distance_km"] > 0 else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        ranking = self._ranking()
+        weeks = [t.week for t in self.engine.trackers.values() if t.week]
+        return {
+            "week": max(weeks) if weeks else None,
+            "ranking": ranking,
+            "most_distance": ranking[0]["name"] if ranking and ranking[0]["distance_km"] > 0 else None,
+            "fastest": max(ranking, key=lambda r: r["max_speed_kmh"])["name"]
+            if ranking and any(r["max_speed_kmh"] for r in ranking) else None,
+            "most_speeding": max(ranking, key=lambda r: r["speeding"])["name"]
+            if ranking and any(r["speeding"] for r in ranking) else None,
         }

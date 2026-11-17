@@ -216,3 +216,21 @@ def test_stored_state_from_older_version_adopts_places_silently():
     assert old.process(fix(WORK.lat + 0.0002, WORK.lon, 60), PLACES, S) == []
     assert old.current_place_ids() == ["work"]
     assert MemberTracker.from_dict(old.to_dict()).known_places == {"home", "work"}
+
+
+def test_weekly_stats_and_rollover():
+    t = MemberTracker()
+    t.process(fix(HOME.lat, HOME.lon, 0), PLACES, S)          # Monday 2026-11-16
+    for i in range(1, 11):
+        lat, lon = interp(HOME, WORK, i / 10)
+        t.process(fix(lat, lon, i, speed=120 if i in (4, 5) else 40), PLACES, S)
+    t.tick(T0 + timedelta(minutes=20), PLACES, S)
+    week = t.week_summary()
+    assert t.week == "2026-W47"
+    assert week["trips"] == 1 and week["speeding"] == 1 and week["max_speed_kmh"] == 120
+    assert 4 < week["distance_km"] < 7
+    copy = MemberTracker.from_dict(t.to_dict())
+    assert copy.week_summary() == week
+    t.tick(T0 + timedelta(days=7), PLACES, S)                  # next Monday
+    assert t.week == "2026-W48" and t.week_summary()["trips"] == 0
+    assert t.last_week["week"] == "2026-W47" and t.last_week["speeding"] == 1

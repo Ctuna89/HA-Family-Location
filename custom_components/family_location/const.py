@@ -12,7 +12,8 @@ SUBENTRY_PLACE = "place"
 CONF_ENTITY = "entity_id"
 CONF_NOTIFY = "notify"
 CONF_RECEIVE_ALERTS = "receive_alerts"
-CONF_SPEED_LIMIT = "speed_limit"
+CONF_SPEED_LIMIT = "speed_limit"                   # street limit (or the only one)
+CONF_HIGHWAY_SPEED_LIMIT = "highway_speed_limit"   # 0 = same as the street limit
 
 # Place data
 CONF_ADDRESS = "address"

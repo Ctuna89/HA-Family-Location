@@ -60,12 +60,14 @@
             "name": "Nombre a mostrar",
             "notify": "Notificaciones a su celular",
             "receive_alerts": "Recibe los avisos del círculo",
-            "speed_limit": "Avisar si supera esta velocidad"
+            "speed_limit": "Límite de velocidad en calles",
+            "highway_speed_limit": "Límite de velocidad en autopistas"
           },
           "data_description": {
             "notify": "Servicio notify.mobile_app_… de su teléfono. Puedes elegir más de uno.",
-            "speed_limit": "0 = sin aviso de velocidad.",
-            "name": "Vacío = el nombre de la persona."
+            "speed_limit": "0 = sin aviso de velocidad. Si no defines límite de autopista, se usa en todas partes.",
+            "name": "Vacío = el nombre de la persona.",
+            "highway_speed_limit": "0 = el mismo de calles. Si lo defines, cuando la persona supera el límite de calles se consulta en OpenStreetMap si va por autopista (solo en ese momento; mientras no se sabe, se usa este límite)."
           }
         },
         "reconfigure": {
@@ -75,12 +77,14 @@
             "name": "Nombre a mostrar",
             "notify": "Notificaciones a su celular",
             "receive_alerts": "Recibe los avisos del círculo",
-            "speed_limit": "Avisar si supera esta velocidad"
+            "speed_limit": "Límite de velocidad en calles",
+            "highway_speed_limit": "Límite de velocidad en autopistas"
           },
           "data_description": {
             "notify": "Servicio notify.mobile_app_… de su teléfono. Puedes elegir más de uno.",
-            "speed_limit": "0 = sin aviso de velocidad.",
-            "name": "Vacío = el nombre de la persona."
+            "speed_limit": "0 = sin aviso de velocidad. Si no defines límite de autopista, se usa en todas partes.",
+            "name": "Vacío = el nombre de la persona.",
+            "highway_speed_limit": "0 = el mismo de calles. Si lo defines, cuando la persona supera el límite de calles se consulta en OpenStreetMap si va por autopista (solo en ese momento; mientras no se sabe, se usa este límite)."
           }
         }
       },
@@ -181,6 +185,18 @@
       },
       "people": {
         "name": "Personas"
+      },
+      "distance_week": {
+        "name": "Distancia esta semana"
+      },
+      "top_speed_week": {
+        "name": "Velocidad máxima esta semana"
+      },
+      "speeding_week": {
+        "name": "Excesos de velocidad esta semana"
+      },
+      "leaderboard": {
+        "name": "Ranking semanal"
       }
     },
     "binary_sensor": {

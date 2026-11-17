@@ -21,7 +21,8 @@ the **Home Assistant Companion app** on each phone, and everything is computed i
 | 👨‍👩‍👧 **Together? No alert** | If James is with Janet, Janet doesn't get «James arrived at Work» (nor the departure or the trip): only the rest of the circle does |
 | 🚗 **On the move** | *Still / Moving / Driving* status, current speed, and a «Moving» binary sensor |
 | 🛣️ **Trips** | Automatic start and end, distance, duration, top speed, origin and destination. Distance and trips today |
-| ⚠️ **Speeding** | Per-person limit (e.g. 100 km/h for the new teen driver). Confirmed by two consecutive readings to avoid false alerts from GPS jumps |
+| ⚠️ **Speeding** | Per-person limit (e.g. 100 km/h for the new teen driver), optionally split into a **street** and a **highway** limit (e.g. 60 / 120 km/h). Confirmed by two consecutive readings to avoid false alerts from GPS jumps |
+| 🏆 **Weekly leaderboard** | Distance, trips, top speed and speeding events per person this week (Monday to Sunday), plus a circle leaderboard |
 | 🔋 **Low battery** | The circle is alerted when someone's phone drops below the threshold |
 | ✅ **Check-in** | A button (and action) that tells everyone «James is at Home» or «near 742 Evergreen Terrace» |
 | 🆘 **Ask for help** | A button that sends a **critical** alert (rings even on silent) with a link to the location |
@@ -58,7 +59,12 @@ the **Home Assistant Companion app** on each phone, and everything is computed i
    3. choose the alerts: on arrival / on departure, for whom and to whom, and whether to alert as soon as
       someone enters.
 3. **Add or edit members:** **«Add member»** button, or the pencil next to each one. There you set their speed
-   limit (0 = no alert), which phone(s) receive their alerts and whether they receive alerts at all.
+   limits (0 = no alert), which phone(s) receive their alerts and whether they receive alerts at all.
+   - **Street limit** only: it applies everywhere.
+   - **Street + highway limits:** when the person goes over the street limit, OpenStreetMap is asked whether
+     they're on a highway (motorway or expressway), and the matching limit is used. Results are cached, so
+     the same stretch of road isn't looked up twice. Until the road type is known, the higher (highway) limit
+     applies, so an unknown road never causes a false alert.
 4. **General options** (*Configure* button): which safety alerts are sent and to whom, battery threshold, and
    trip detection sensitivity.
 
@@ -88,6 +94,7 @@ Per member (a device with their name; entity IDs depend on your Home Assistant l
 | `binary_sensor.<name>_speeding` | Only if they have a speed limit |
 | `sensor.<name>_distance_today` | km travelled today and number of trips |
 | `sensor.<name>_last_trip` | km of the last trip; origin, destination, times, duration and top speed in attributes |
+| `sensor.<name>_distance_this_week` / `_top_speed_this_week` / `_speeding_this_week` | This week's stats (Monday to Sunday); last week's totals in the `last_week` attribute |
 | `sensor.<name>_phone_battery` | Battery % |
 | `button.<name>_check_in` / `button.<name>_ask_for_help` | Alert the circle |
 
@@ -157,11 +164,29 @@ cards:
 
 Home Assistant keeps the location history: the map card with `hours_to_show` shows the route.
 
+### Weekly leaderboard
+
+`sensor.<circle>_weekly_leaderboard` shows who drove the most this week, with the full ranking in its
+`ranking` attribute (plus `fastest` and `most_speeding`). A Markdown card:
+
+```yaml
+type: markdown
+title: 🏆 This week
+content: >
+  {% for r in state_attr('sensor.family_weekly_leaderboard', 'ranking') %}
+  **{{ r.position }}. {{ r.name }}** · {{ r.distance_km }} km · {{ r.trips }} trips ·
+  top {{ r.max_speed_kmh }} km/h · {{ r.speeding }} speeding
+  {% endfor %}
+```
+
 ## Privacy
 
 - Your location stays in your Home Assistant.
 - OpenStreetMap (Nominatim) is only queried to look up a place's address when you create it and, if the option
   is on, to show the address of someone stopped away from their places. You can turn it off.
+- If you set separate street and highway limits for someone, OpenStreetMap is also asked for the road type at
+  their position, only while they're going faster than their street limit. Leave the highway limit at 0 to
+  avoid it.
 
 ## Not supported (yet)
 

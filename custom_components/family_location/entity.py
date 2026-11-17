@@ -50,6 +50,21 @@ class MemberEntity(FamilyLocationEntity):
         return self.tracker.initialized
 
 
+class CircleEntity(FamilyLocationEntity):
+    """Entities about the whole circle (one device per circle)."""
+
+    def __init__(self, engine: CircleEngine, key: str) -> None:
+        super().__init__(engine)
+        self._attr_translation_key = key
+        self._attr_unique_id = f"{engine.entry.entry_id}_{key}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, engine.entry.entry_id)},
+            name=engine.entry.title,
+            manufacturer="Family Location",
+            entry_type=DeviceEntryType.SERVICE,
+        )
+
+
 class PlaceEntity(FamilyLocationEntity):
     def __init__(self, engine: CircleEngine, place: PlaceConfig, key: str) -> None:
         super().__init__(engine)

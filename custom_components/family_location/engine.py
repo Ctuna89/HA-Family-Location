@@ -46,6 +46,7 @@ from .const import (
     CONF_SHOW_ZONES,
     CONF_SAFETY_RECIPIENTS,
     CONF_SPEED_LIMIT,
+    CONF_HIGHWAY_SPEED_LIMIT,
     CONF_START_DISTANCE,
     CONF_STOP_MINUTES,
     CONF_WATCH,
@@ -80,6 +81,9 @@ _LOGGER = logging.getLogger(__name__)
 
 STORAGE_VERSION = 1
 SAVE_DELAY = 30
+ROAD_CACHE_TTL = timedelta(days=30)
+ROAD_CACHE_MAX = 5000
+MEMBER_ROAD_TTL = timedelta(minutes=5)
 TICK = timedelta(seconds=30)
 # Alerts not sent to whoever is with the person (they already know).
 COMPANION_EVENTS = {EV_ARRIVE, EV_LEAVE, EV_TRIP_START, EV_TRIP_END}
@@ -92,7 +96,12 @@ class MemberConfig:
     entity_id: str
     notify: list[str] = field(default_factory=list)
     receive_alerts: bool = True
-    speed_limit: float = 0
+    speed_limit: float = 0          # street limit (or the only one)
+    highway_limit: float = 0        # 0 = same as speed_limit
+
+    @property
+    def two_limits(self) -> bool:
+        return bool(self.speed_limit and self.highway_limit and self.highway_limit != self.speed_limit)
 
 
 @dataclass
@@ -122,6 +131,7 @@ def member_from_subentry(subentry_id: str, title: str, data: dict[str, Any]) -> 
         notify=[n for n in notify if n],
         receive_alerts=bool(data.get(CONF_RECEIVE_ALERTS, True)),
         speed_limit=float(data.get(CONF_SPEED_LIMIT) or 0),
+        highway_limit=float(data.get(CONF_HIGHWAY_SPEED_LIMIT) or 0),
     )
 
 
@@ -173,6 +183,9 @@ class CircleEngine:
         self._geocoding: set[str] = set()
         self._battery_entities: dict[str, str | None] = {}
         self._pending_sends: set[Callable[[], None]] = set()
+        self._road_cache: dict[tuple[float, float], tuple[str, datetime]] = {}
+        self._road_lookups: set[tuple[float, float]] = set()
+        self._member_road: dict[str, tuple[str, datetime]] = {}   # last known road type per member
         self.language = messages.lang_of(hass.config.language)
 
     # ------------------------------------------------------------------ lifecycle
@@ -184,6 +197,12 @@ class CircleEngine:
         stored = await self._store.async_load() or {}
         saved = stored.get("members") or {}
         self.addresses = dict(stored.get("addresses") or {})
+        for item in stored.get("roads") or []:
+            try:
+                lat, lon, road, when = item
+                self._road_cache[(float(lat), float(lon))] = (str(road), datetime.fromisoformat(when))
+            except (TypeError, ValueError):
+                continue
         adopted = False
         for member_id in self.members:
             tracker = self.trackers[member_id] = MemberTracker.from_dict(saved.get(member_id) or {})
@@ -214,6 +233,7 @@ class CircleEngine:
         return {
             "members": {mid: t.to_dict() for mid, t in self.trackers.items()},
             "addresses": self.addresses,
+            "roads": [[lat, lon, road, when.isoformat()] for (lat, lon), (road, when) in self._road_cache.items()],
         }
 
     def _schedule_save(self) -> None:
@@ -239,8 +259,19 @@ class CircleEngine:
         return []
 
     # ------------------------------------------------------------------ options
-    def settings_for(self, member: MemberConfig) -> Settings:
+    def settings_for(self, member: MemberConfig, fix: Fix | None = None) -> Settings:
         o = self.options
+        limit, road = member.speed_limit, None
+        if member.two_limits and fix is not None:
+            # Street or highway limit depending on the road. While a new stretch is being looked up, the
+            # member's last known road type is used; if nothing recent is known, the (higher) highway
+            # limit is used, so an unknown road never causes a false alert.
+            road = self._road_cache_get(fix.lat, fix.lon)
+            if road is not None:
+                self._member_road[member.id] = (road, fix.time)
+            elif (last := self._member_road.get(member.id)) and fix.time - last[1] <= MEMBER_ROAD_TTL:
+                road = last[0]
+            limit = member.speed_limit if road == geocode.ROAD_STREET else member.highway_limit
         return Settings(
             moving_speed=float(o.get(CONF_MOVING_SPEED, DEFAULT_MOVING_SPEED)),
             driving_speed=float(o.get(CONF_DRIVING_SPEED, DEFAULT_DRIVING_SPEED)),
@@ -248,8 +279,48 @@ class CircleEngine:
             start_distance=float(o.get(CONF_START_DISTANCE, DEFAULT_START_DISTANCE)),
             max_accuracy=float(o.get(CONF_MAX_ACCURACY, DEFAULT_MAX_ACCURACY)),
             low_battery=int(o.get(CONF_LOW_BATTERY, DEFAULT_LOW_BATTERY)),
-            speed_limit=member.speed_limit,
+            speed_limit=limit,
+            road=road,
         )
+
+    # ------------------------------------------------------------------ road types
+    @staticmethod
+    def _road_cell(lat: float, lon: float) -> tuple[float, float]:
+        return round(lat, 3), round(lon, 3)   # ~100 m cells
+
+    def _road_cache_get(self, lat: float, lon: float) -> str | None:
+        hit = self._road_cache.get(self._road_cell(lat, lon))
+        if hit is None or dt_util.utcnow() - hit[1] > ROAD_CACHE_TTL:
+            return None
+        return hit[0]
+
+    @callback
+    def _maybe_lookup_road(self, member: MemberConfig) -> None:
+        """Looks up the road type only when someone with two limits goes faster than the street limit."""
+        tracker = self.trackers[member.id]
+        fix = tracker.last_fix
+        if not member.two_limits or fix is None or tracker.trip is None:
+            return
+        if (tracker.speed_kmh or 0) <= member.speed_limit:
+            return
+        cell = self._road_cell(fix.lat, fix.lon)
+        if cell in self._road_lookups or self._road_cache_get(fix.lat, fix.lon) is not None:
+            return
+        self._road_lookups.add(cell)
+        self.entry.async_create_background_task(
+            self.hass, self._lookup_road(member.id, cell, fix), f"{DOMAIN} road {cell}")
+
+    async def _lookup_road(self, member_id: str, cell: tuple[float, float], fix: Fix) -> None:
+        try:
+            road = await geocode.road_type(async_get_clientsession(self.hass), fix.lat, fix.lon)
+            if road is not None:
+                self._member_road[member_id] = (road, fix.time)
+                if len(self._road_cache) > ROAD_CACHE_MAX:
+                    self._road_cache.clear()
+                self._road_cache[cell] = (road, dt_util.utcnow())
+                self._schedule_save()
+        finally:
+            self._road_lookups.discard(cell)
 
     def place_list(self, member_id: str | None = None) -> list[Place]:
         """Places with current coordinates (places linked to a zone follow it if it changes)."""
@@ -342,8 +413,9 @@ class CircleEngine:
                 and last.battery == fix.battery and last.speed_kmh == fix.speed_kmh:
             return
         was_initialized = tracker.initialized
-        events = tracker.process(fix, self.place_list(member_id), self.settings_for(member))
+        events = tracker.process(fix, self.place_list(member_id), self.settings_for(member, fix))
         self._handle(member, events)
+        self._maybe_lookup_road(member)
         if not was_initialized or any(e.type in (EV_TRIP_END, EV_LEAVE) for e in events):
             self._maybe_geocode(member_id)
         async_dispatcher_send(self.hass, self.signal)

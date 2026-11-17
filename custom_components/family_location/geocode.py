@@ -102,3 +102,25 @@ async def reverse(session: aiohttp.ClientSession, lat: float, lon: float, langua
     if not isinstance(data, dict) or "error" in data:
         return None
     return short_address(data)
+
+
+ROAD_HIGHWAY = "highway"
+ROAD_STREET = "street"
+# OSM road classes treated as highways (motorways and expressways); everything else is a street.
+HIGHWAY_TYPES = {"motorway", "motorway_link", "trunk", "trunk_link"}
+
+
+async def road_type(session: aiohttp.ClientSession, lat: float, lon: float) -> str | None:
+    """«highway» or «street» for the road closest to some coordinates, or None if unknown.
+
+    Uses Nominatim's reverse lookup at street level (zoom 16), which returns the road itself.
+    """
+    try:
+        data = await _get(session, "reverse", {"lat": f"{lat:.5f}", "lon": f"{lon:.5f}", "zoom": 16,
+                                               "addressdetails": 0}, "en")
+    except (aiohttp.ClientError, TimeoutError, ValueError) as err:
+        _LOGGER.debug("Could not get the road type at %s,%s: %s", lat, lon, err)
+        return None
+    if not isinstance(data, dict) or data.get("category") != "highway":
+        return None
+    return ROAD_HIGHWAY if data.get("type") in HIGHWAY_TYPES else ROAD_STREET

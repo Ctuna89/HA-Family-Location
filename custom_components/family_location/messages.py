@@ -22,7 +22,7 @@ TEXTS: dict[str, dict[str, tuple[str, str]]] = {
         EV_LEAVE: ("🚶 {name} salió de {place}", "{name} salió de {place} a las {time}."),
         EV_TRIP_START: ("🚗 {name} va en camino", "{name} salió{from_txt} a las {time}."),
         EV_TRIP_END: ("🏁 {name} terminó un viaje", "{distance} km en {duration}{route} · máx. {max_speed} km/h."),
-        EV_SPEEDING: ("⚠️ Exceso de velocidad: {name}", "{name} va a {speed} km/h (límite {limit} km/h)."),
+        EV_SPEEDING: ("⚠️ Exceso de velocidad: {name}", "{name} va a {speed} km/h{road_txt} (límite {limit} km/h)."),
         EV_LOW_BATTERY: ("🔋 Batería baja: {name}", "El teléfono de {name} tiene {battery} % de batería."),
         EV_CHECK_IN: ("✅ {name} hizo check-in", "{name} está {where}.{note}"),
         EV_SOS: ("🆘 {name} pide ayuda", "{name} pidió ayuda {where} a las {time}.{note}"),
@@ -32,7 +32,7 @@ TEXTS: dict[str, dict[str, tuple[str, str]]] = {
         EV_LEAVE: ("🚶 {name} left {place}", "{name} left {place} at {time}."),
         EV_TRIP_START: ("🚗 {name} is on the way", "{name} left{from_txt} at {time}."),
         EV_TRIP_END: ("🏁 {name} finished a trip", "{distance} km in {duration}{route} · top {max_speed} km/h."),
-        EV_SPEEDING: ("⚠️ Speeding: {name}", "{name} is going {speed} km/h (limit {limit} km/h)."),
+        EV_SPEEDING: ("⚠️ Speeding: {name}", "{name} is going {speed} km/h{road_txt} (limit {limit} km/h)."),
         EV_LOW_BATTERY: ("🔋 Low battery: {name}", "{name}'s phone is at {battery}% battery."),
         EV_CHECK_IN: ("✅ {name} checked in", "{name} is {where}.{note}"),
         EV_SOS: ("🆘 {name} needs help", "{name} asked for help {where} at {time}.{note}"),
@@ -41,9 +41,11 @@ TEXTS: dict[str, dict[str, tuple[str, str]]] = {
 
 WORDS = {
     "es": {"at": "en {}", "near": "cerca de {}", "unknown": "en una ubicación desconocida", "from": " de {}",
-           "route_both": " · de {} a {}", "route_from": " · desde {}", "route_to": " · hasta {}"},
+           "route_both": " · de {} a {}", "route_from": " · desde {}", "route_to": " · hasta {}",
+           "road_highway": " en autopista", "road_street": " en calle"},
     "en": {"at": "at {}", "near": "near {}", "unknown": "at an unknown location", "from": " {}",
-           "route_both": " · from {} to {}", "route_from": " · from {}", "route_to": " · to {}"},
+           "route_both": " · from {} to {}", "route_from": " · from {}", "route_to": " · to {}",
+           "road_highway": " on a highway", "road_street": " on a street"},
 }
 
 
@@ -97,6 +99,7 @@ def build(event_type: str, lang: str, name: str, when: datetime, place: str | No
         "route": route,
         "max_speed": data.get("max_speed_kmh", 0),
         "speed": data.get("speed_kmh", ""),
+        "road_txt": w.get("road_" + str(data.get("road")), ""),
         "limit": data.get("limit_kmh", ""),
         "battery": data.get("battery", ""),
         "where": where,

@@ -19,7 +19,8 @@ Sin cuentas, sin suscripción y sin que tu ubicación pase por servidores de ter
 | 👨‍👩‍👧 **Si van juntos, no se avisan** | Si James va con Janet, a Janet no le llega «James llegó al Trabajo» (ni la salida ni el viaje): solo al resto del círculo |
 | 🚗 **En movimiento** | Estado *Quieto / En movimiento / Conduciendo*, velocidad actual, sensor binario «En movimiento» |
 | 🛣️ **Viajes** | Inicio y fin automáticos, distancia, duración, velocidad máxima, origen y destino. Distancia y viajes del día |
-| ⚠️ **Exceso de velocidad** | Límite por persona (p. ej. 100 km/h para el hijo que recién maneja). Se confirma con dos lecturas seguidas para evitar falsos avisos por saltos del GPS |
+| ⚠️ **Exceso de velocidad** | Límite por persona (p. ej. 100 km/h para el hijo que recién maneja), opcionalmente separado en límite de **calle** y de **autopista** (p. ej. 60 / 120 km/h). Se confirma con dos lecturas seguidas para evitar falsos avisos por saltos del GPS |
+| 🏆 **Ranking semanal** | Distancia, viajes, velocidad máxima y excesos de cada persona en la semana (lunes a domingo), más un ranking del círculo |
 | 🔋 **Batería baja** | Aviso al círculo cuando el teléfono de alguien baja del umbral |
 | ✅ **Check-in** | Botón (y acción) que avisa a todos «James está en Casa» o «cerca de Av. Matta 100» |
 | 🆘 **Pedir ayuda** | Botón que envía una alerta **crítica** (suena aunque el teléfono esté en silencio) con un enlace a la ubicación |
@@ -55,8 +56,13 @@ Sin cuentas, sin suscripción y sin que tu ubicación pase por servidores de ter
    1. nombre y dirección (o una zona existente, o nada para marcarlo en el mapa);
    2. confirmas el punto y el radio en el mapa;
    3. eliges los avisos: al llegar / al salir, de quiénes y a quiénes.
-3. **Añadir o editar integrantes:** botón **«Añadir integrante»**, o el lápiz junto a cada uno. Ahí defines su
-   límite de velocidad (0 = sin aviso), a qué celular(es) se le envían los avisos y si los recibe.
+3. **Añadir o editar integrantes:** botón **«Añadir integrante»**, o el lápiz junto a cada uno. Ahí defines sus
+   límites de velocidad (0 = sin aviso), a qué celular(es) se le envían los avisos y si los recibe.
+   - **Solo límite de calle:** se usa en todas partes.
+   - **Límite de calle y de autopista:** cuando la persona supera el límite de calle, se le pregunta a
+     OpenStreetMap si va por autopista, y se usa el límite que corresponde. Las respuestas se guardan, así que
+     el mismo tramo no se consulta dos veces. Mientras no se sabe el tipo de vía, se usa el límite más alto (el
+     de autopista), así una vía desconocida nunca genera un falso aviso.
 4. **Opciones generales** (botón *Configurar*): qué avisos de seguridad se envían y a quién, umbral de batería,
    y la sensibilidad de la detección de viajes.
 
@@ -87,6 +93,7 @@ Por cada integrante (dispositivo con su nombre):
 | `binary_sensor.<nombre>_exceso_de_velocidad` | Solo si tiene límite configurado |
 | `sensor.<nombre>_distancia_hoy` | km recorridos hoy y número de viajes |
 | `sensor.<nombre>_ultimo_viaje` | km del último viaje; origen, destino, horas, duración y velocidad máxima en atributos |
+| `sensor.<nombre>_distancia_esta_semana` / `_velocidad_maxima_esta_semana` / `_excesos_de_velocidad_esta_semana` | Datos de la semana (lunes a domingo); los de la semana pasada en el atributo `last_week` |
 | `sensor.<nombre>_bateria_del_telefono` | % de batería |
 | `button.<nombre>_check_in` / `button.<nombre>_pedir_ayuda` | Avisan al círculo |
 
@@ -156,11 +163,28 @@ cards:
 
 El historial de recorridos lo guarda Home Assistant: la tarjeta de mapa con `hours_to_show` muestra la ruta.
 
+### Ranking semanal
+
+`sensor.<círculo>_ranking_semanal` muestra quién manejó más esta semana, con el ranking completo en el atributo
+`ranking` (y además `fastest` y `most_speeding`). Una tarjeta Markdown:
+
+```yaml
+type: markdown
+title: 🏆 Esta semana
+content: >
+  {% for r in state_attr('sensor.familia_ranking_semanal', 'ranking') %}
+  **{{ r.position }}. {{ r.name }}** · {{ r.distance_km }} km · {{ r.trips }} viajes ·
+  máx. {{ r.max_speed_kmh }} km/h · {{ r.speeding }} excesos
+  {% endfor %}
+```
+
 ## Privacidad
 
 - La ubicación se queda en tu Home Assistant.
 - Solo se consulta OpenStreetMap (Nominatim) para buscar la dirección de un lugar al crearlo y, si la opción
   está activada, para mostrar la dirección de alguien detenido fuera de sus lugares. Puedes desactivarla.
+- Si defines límites separados de calle y autopista para alguien, también se consulta a OpenStreetMap el tipo
+  de vía donde está, solo mientras supera su límite de calle. Deja el límite de autopista en 0 para evitarlo.
 
 ## Lo que no hace (todavía)
 

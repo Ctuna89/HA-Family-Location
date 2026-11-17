@@ -56,13 +56,14 @@ async def advance(hass, freezer, seconds):
         await hass.async_block_till_done()
 
 
-async def setup_circle(hass: HomeAssistant, speed_limit=100, extra=(), **options):
+async def setup_circle(hass: HomeAssistant, speed_limit=100, extra=(), highway_limit=0, **options):
     entry = MockConfigEntry(
         domain=DOMAIN, title="Familia", data={}, options={**default_options(), **options},
         subentries_data=[
             ConfigSubentryData(subentry_type="member", title="James", unique_id="device_tracker.james",
                                data={"entity_id": "device_tracker.james", "notify": ["notify.mobile_app_james"],
-                                     "receive_alerts": True, "speed_limit": speed_limit}),
+                                     "receive_alerts": True, "speed_limit": speed_limit,
+                                     "highway_speed_limit": highway_limit}),
             ConfigSubentryData(subentry_type="member", title="Janet", unique_id="device_tracker.janet",
                                data={"entity_id": "device_tracker.janet", "notify": ["notify.mobile_app_janet"],
                                      "receive_alerts": True, "speed_limit": 0}),
@@ -337,3 +338,40 @@ async def test_check_in_uses_zone_name(hass: HomeAssistant):
     await hass.services.async_call(DOMAIN, "check_in", {"entity_id": "device_tracker.james"}, blocking=True)
     await hass.async_block_till_done()
     assert calls[0].data["message"] == "James is at Gym."
+
+
+async def test_street_and_highway_limits_and_leaderboard(hass: HomeAssistant, freezer):
+    """60 km/h on streets, 120 on highways: 100 km/h on the highway is fine, on a street it's speeding."""
+    hass.config.language = "en"
+    janet = capture_notify(hass, "mobile_app_janet")
+    capture_notify(hass, "mobile_app_james")
+    tracker(hass, "device_tracker.james", *HOME)
+    tracker(hass, "device_tracker.janet", *HOME)
+    midway = (HOME[0] + WORK[0]) / 2
+
+    async def road(_session, lat, lon):
+        return "highway" if lat < midway else "street"
+
+    with patch("custom_components.family_location.engine.geocode.road_type", side_effect=road) as lookup:
+        await setup_circle(hass, speed_limit=60, highway_limit=120)
+        for i in range(1, 11):
+            f = i / 10
+            freezer.tick(timedelta(seconds=30))
+            tracker(hass, "device_tracker.james", HOME[0] + (WORK[0] - HOME[0]) * f,
+                    HOME[1] + (WORK[1] - HOME[1]) * f, speed=100)
+            await hass.async_block_till_done()
+        assert lookup.call_count >= 5                    # only looked up while over the street limit
+        await advance(hass, freezer, 120)
+
+    speeding = [c.data for c in janet if c.data["title"].startswith("⚠️")]
+    assert len(speeding) == 1
+    assert speeding[0]["message"] == "James is going 100 km/h on a street (limit 60 km/h)."
+
+    attrs = hass.states.get("sensor.james_speed").attributes
+    assert attrs["speed_limit_kmh"] == 60 and attrs["highway_speed_limit_kmh"] == 120
+    assert hass.states.get("sensor.james_speeding_this_week").state == "1"
+    assert hass.states.get("sensor.james_top_speed_this_week").state == "100"
+    board = hass.states.get("sensor.familia_weekly_leaderboard")
+    assert board.state == "James"
+    assert [r["name"] for r in board.attributes["ranking"]] == ["James", "Janet"]
+    assert board.attributes["most_speeding"] == "James"

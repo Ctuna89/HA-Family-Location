@@ -48,7 +48,8 @@ class SpeedingBinarySensor(MemberEntity, BinarySensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        return {"speed_limit_kmh": self.member.speed_limit}
+        return {"speed_limit_kmh": self.member.speed_limit,
+                "highway_speed_limit_kmh": self.member.highway_limit or None}
 
 
 class OccupiedBinarySensor(PlaceEntity, BinarySensorEntity):

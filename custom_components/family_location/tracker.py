@@ -81,6 +81,7 @@ class Settings:
     max_accuracy: float = DEFAULT_MAX_ACCURACY
     low_battery: int = DEFAULT_LOW_BATTERY
     speed_limit: float = 0   # km/h, 0 = no alert
+    road: str | None = None  # road type the limit applies to («street» / «highway»), when known
 
 
 @dataclass
@@ -131,6 +132,19 @@ class Trip:
         }
 
 
+def new_week_stats() -> dict[str, float]:
+    return {"distance_m": 0.0, "trips": 0, "max_speed": 0.0, "speeding": 0}
+
+
+def week_summary(stats: dict[str, float]) -> dict[str, Any]:
+    return {
+        "distance_km": round(stats["distance_m"] / 1000, 1),
+        "trips": int(stats["trips"]),
+        "max_speed_kmh": round(stats["max_speed"]),
+        "speeding": int(stats["speeding"]),
+    }
+
+
 def _dt(value: str | None) -> datetime | None:
     return datetime.fromisoformat(value) if value else None
 
@@ -152,6 +166,9 @@ class MemberTracker:
         self.day: date | None = None
         self.distance_today_m = 0.0
         self.trips_today = 0
+        self.week: str | None = None            # ISO week, e.g. «2026-W47»
+        self.week_stats = new_week_stats()
+        self.last_week: dict[str, Any] | None = None
         self.over_limit = 0             # consecutive readings over the limit
         self.speeding = False
         self.last_speeding_alert: datetime | None = None
@@ -273,6 +290,7 @@ class MemberTracker:
                              last_move=fix.time, move_lat=fix.lat, move_lon=fix.lon)
             self.trip.distance_m = anchor_dist
             self.distance_today_m += anchor_dist
+            self.week_stats["distance_m"] += anchor_dist
             self.over_limit = 0
             self.speeding = False
             self.last_speeding_alert = None
@@ -283,6 +301,7 @@ class MemberTracker:
             if seg > noise or (speed or 0) >= settings.moving_speed:
                 self.trip.distance_m += seg
                 self.distance_today_m += seg
+                self.week_stats["distance_m"] += seg
             move_dist = distance_m(self.trip.move_lat, self.trip.move_lon, fix.lat, fix.lon)
             if (speed or 0) >= settings.moving_speed / 2 or move_dist > 100:
                 self.trip.last_move = fix.time
@@ -291,6 +310,7 @@ class MemberTracker:
         if self.trip is not None:
             if speed is not None:
                 self.trip.max_speed = max(self.trip.max_speed, speed)
+                self.week_stats["max_speed"] = max(self.week_stats["max_speed"], speed)
             events += self._speeding(fix, speed, settings)
 
         # Arrivals: at Home (an «instant» place) or with no trip in progress they are confirmed right away;
@@ -366,6 +386,7 @@ class MemberTracker:
         summary = trip.summary()
         self.last_trip = summary
         self.trips_today += 1
+        self.week_stats["trips"] += 1
         self.trip = None
         self.speeding = False
         self.over_limit = 0
@@ -416,8 +437,9 @@ class MemberTracker:
             return []
         self.last_speeding_alert = fix.time
         self.trip.speeding_count += 1
+        self.week_stats["speeding"] += 1
         return [Event(EV_SPEEDING, fix.time, data={
-            "speed_kmh": round(speed), "limit_kmh": round(limit),
+            "speed_kmh": round(speed), "limit_kmh": round(limit), "road": settings.road,
             "latitude": fix.lat, "longitude": fix.lon,
         })]
 
@@ -440,6 +462,16 @@ class MemberTracker:
             self.day = today
             self.distance_today_m = 0.0
             self.trips_today = 0
+        year, week, _ = today.isocalendar()
+        key = f"{year}-W{week:02d}"
+        if self.week != key:
+            if self.week is not None:
+                self.last_week = {"week": self.week, **week_summary(self.week_stats)}
+            self.week = key
+            self.week_stats = new_week_stats()
+
+    def week_summary(self) -> dict[str, Any]:
+        return week_summary(self.week_stats)
 
     # ------------------------------------------------------------------ persistence
     def to_dict(self) -> dict[str, Any]:
@@ -466,6 +498,9 @@ class MemberTracker:
             "day": self.day.isoformat() if self.day else None,
             "distance_today_m": self.distance_today_m,
             "trips_today": self.trips_today,
+            "week": self.week,
+            "week_stats": self.week_stats,
+            "last_week": self.last_week,
             "battery": self.battery,
             "battery_alerted": self.battery_alerted,
         }
@@ -491,6 +526,9 @@ class MemberTracker:
             self.day = date.fromisoformat(data["day"]) if data.get("day") else None
             self.distance_today_m = float(data.get("distance_today_m") or 0)
             self.trips_today = int(data.get("trips_today") or 0)
+            self.week = data.get("week")
+            self.week_stats = {**new_week_stats(), **(data.get("week_stats") or {})}
+            self.last_week = data.get("last_week")
             self.battery = data.get("battery")
             self.battery_alerted = bool(data.get("battery_alerted"))
         except (AttributeError, KeyError, TypeError, ValueError):

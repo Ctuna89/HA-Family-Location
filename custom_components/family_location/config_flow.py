@@ -51,6 +51,7 @@ from .const import (
     CONF_SHOW_ZONES,
     CONF_SAFETY_RECIPIENTS,
     CONF_SPEED_LIMIT,
+    CONF_HIGHWAY_SPEED_LIMIT,
     CONF_START_DISTANCE,
     CONF_STOP_MINUTES,
     CONF_WATCH,
@@ -247,6 +248,7 @@ class MemberSubentryFlow(ConfigSubentryFlow):
                     CONF_NOTIFY: list(user_input.get(CONF_NOTIFY) or []),
                     CONF_RECEIVE_ALERTS: user_input.get(CONF_RECEIVE_ALERTS, True),
                     CONF_SPEED_LIMIT: float(user_input.get(CONF_SPEED_LIMIT) or 0),
+                    CONF_HIGHWAY_SPEED_LIMIT: float(user_input.get(CONF_HIGHWAY_SPEED_LIMIT) or 0),
                 }
                 if current is None:
                     return self.async_create_entry(title=title, data=data, unique_id=entity)
@@ -265,6 +267,8 @@ class MemberSubentryFlow(ConfigSubentryFlow):
                 sorted(set(notify_choices) | set(default_notify)), custom=True),
             vol.Required(CONF_RECEIVE_ALERTS, default=values.get(CONF_RECEIVE_ALERTS, True)): selector.BooleanSelector(),
             vol.Required(CONF_SPEED_LIMIT, default=values.get(CONF_SPEED_LIMIT, 0)): _number(0, 250, 5, "km/h"),
+            vol.Required(CONF_HIGHWAY_SPEED_LIMIT, default=values.get(CONF_HIGHWAY_SPEED_LIMIT, 0)):
+                _number(0, 250, 5, "km/h"),
         })
         step = "user" if current is None else "reconfigure"
         return self.async_show_form(step_id=step, data_schema=schema, errors=errors)

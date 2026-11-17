@@ -60,12 +60,14 @@
             "name": "Display name",
             "notify": "Phone notifications",
             "receive_alerts": "Receives the circle's alerts",
-            "speed_limit": "Alert above this speed"
+            "speed_limit": "Speed limit on streets",
+            "highway_speed_limit": "Speed limit on highways"
           },
           "data_description": {
             "notify": "notify.mobile_app_… service of their phone. You can pick more than one.",
-            "speed_limit": "0 = no speed alert.",
-            "name": "Empty = the person's name."
+            "speed_limit": "0 = no speed alert. Without a highway limit, it applies everywhere.",
+            "name": "Empty = the person's name.",
+            "highway_speed_limit": "0 = same as streets. If set, when the person goes over the street limit OpenStreetMap is asked whether they're on a highway (only then; until it's known, this limit is used)."
           }
         },
         "reconfigure": {
@@ -75,12 +77,14 @@
             "name": "Display name",
             "notify": "Phone notifications",
             "receive_alerts": "Receives the circle's alerts",
-            "speed_limit": "Alert above this speed"
+            "speed_limit": "Speed limit on streets",
+            "highway_speed_limit": "Speed limit on highways"
           },
           "data_description": {
             "notify": "notify.mobile_app_… service of their phone. You can pick more than one.",
-            "speed_limit": "0 = no speed alert.",
-            "name": "Empty = the person's name."
+            "speed_limit": "0 = no speed alert. Without a highway limit, it applies everywhere.",
+            "name": "Empty = the person's name.",
+            "highway_speed_limit": "0 = same as streets. If set, when the person goes over the street limit OpenStreetMap is asked whether they're on a highway (only then; until it's known, this limit is used)."
           }
         }
       },
@@ -181,6 +185,18 @@
       },
       "people": {
         "name": "People"
+      },
+      "distance_week": {
+        "name": "Distance this week"
+      },
+      "top_speed_week": {
+        "name": "Top speed this week"
+      },
+      "speeding_week": {
+        "name": "Speeding this week"
+      },
+      "leaderboard": {
+        "name": "Weekly leaderboard"
       }
     },
     "binary_sensor": {
