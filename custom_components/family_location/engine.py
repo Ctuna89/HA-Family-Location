@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import secrets
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -65,6 +66,10 @@ from .const import (
     EV_SPEEDING,
     EV_TRIP_END,
     EV_TRIP_START,
+    EV_LOVE,
+    EV_MESSAGE,
+    EV_ETA_REQUEST,
+    EV_ETA_REPLY,
     EVENT_NAME,
     SIGNAL_UPDATE,
     TOGETHER_GRACE_S,
@@ -79,6 +84,9 @@ _LOGGER = logging.getLogger(__name__)
 
 STORAGE_VERSION = 1
 SAVE_DELAY = 30
+NOTIFICATION_ACTION_EVENT = "mobile_app_notification_action"
+ETA_ACTION_PREFIX = "FAMLOC_ETA_"
+ETA_REQUEST_TTL = timedelta(hours=2)
 TICK = timedelta(seconds=30)
 # Alerts not sent to whoever is with the person (they already know).
 COMPANION_EVENTS = {EV_ARRIVE, EV_LEAVE, EV_TRIP_START, EV_TRIP_END}
@@ -172,6 +180,8 @@ class CircleEngine:
         self._geocoding: set[str] = set()
         self._battery_entities: dict[str, str | None] = {}
         self._pending_sends: set[Callable[[], None]] = set()
+        # ETA questions waiting for an answer: request id -> (asker member id or None, asker name, target id, time)
+        self._eta_requests: dict[str, tuple[str | None, str, str, datetime]] = {}
         self.language = messages.lang_of(hass.config.language)
 
     # ------------------------------------------------------------------ lifecycle
@@ -194,6 +204,7 @@ class CircleEngine:
         if self._by_entity:
             self._unsubs.append(async_track_state_change_event(self.hass, list(self._by_entity), self._on_state))
         self._unsubs.append(async_track_time_interval(self.hass, self._on_tick, TICK))
+        self._unsubs.append(self.hass.bus.async_listen(NOTIFICATION_ACTION_EVENT, self._on_notification_action))
         for member_id in self.members:
             self._update_member(member_id)
 
@@ -540,3 +551,114 @@ class CircleEngine:
             if member.entity_id == entity_id:
                 return member
         return None
+
+    # ------------------------------------------------------------------ direct messages
+    def member_for_user(self, user_id: str | None) -> MemberConfig | None:
+        """The member linked to a Home Assistant user (through its person), if any."""
+        if not user_id:
+            return None
+        for member in self.members.values():
+            if member.entity_id.startswith("person."):
+                persons = [self.hass.states.get(member.entity_id)]
+            else:
+                persons = [st for st in self.hass.states.async_all("person")
+                           if member.entity_id in (st.attributes.get("device_trackers") or [])]
+            if any(st is not None and st.attributes.get("user_id") == user_id for st in persons):
+                return member
+        return None
+
+    async def _sender(self, user_id: str | None) -> tuple[MemberConfig | None, str]:
+        member = self.member_for_user(user_id)
+        if member is not None:
+            return member, member.name
+        if user_id and (user := await self.hass.auth.async_get_user(user_id)) and user.name:
+            return None, user.name
+        return None, messages.SOMEONE[self.language]
+
+    def _notify_member(self, member: MemberConfig, title: str, message: str, data: dict[str, Any]) -> int:
+        """Sends a direct notification to one member (regardless of «receives circle alerts»)."""
+        sent = 0
+        for service in member.notify:
+            svc = notify_service(service)
+            if not self.hass.services.has_service("notify", svc):
+                _LOGGER.warning("Notification service notify.%s for %s does not exist", svc, member.name)
+                continue
+            self.hass.async_create_task(
+                self._call_notify(svc, {"title": title, "message": message, "data": data}),
+                f"{DOMAIN} message {svc}",
+            )
+            sent += 1
+        return sent
+
+    def _fire(self, event_type: str, **data: Any) -> None:
+        self.hass.bus.async_fire(EVENT_NAME, {"type": event_type, "time": dt_util.now().isoformat(), **data})
+
+    async def async_send_message(self, target_id: str, user_id: str | None, text: str = "") -> None:
+        """«I love you» (no text) or a custom text message to one member."""
+        target = self.members[target_id]
+        sender, name = await self._sender(user_id)
+        kind = "message" if text else "love"
+        title, message = messages.direct(kind, self.language, sender=name, text=text)
+        self._notify_member(target, title, message, {"tag": f"{DOMAIN}_{kind}_{target_id}", "group": DOMAIN})
+        self._fire(EV_MESSAGE if text else EV_LOVE, member=target.name, member_id=target.id,
+                   entity_id=target.entity_id, sender=name, sender_id=sender.id if sender else None, text=text)
+
+    async def async_ask_eta(self, target_id: str, user_id: str | None) -> None:
+        """Asks a member when they'll arrive; they answer with a notification button."""
+        target = self.members[target_id]
+        sender, name = await self._sender(user_id)
+        now = dt_util.now()
+        for req in [r for r, v in self._eta_requests.items() if now - v[3] > ETA_REQUEST_TTL]:
+            del self._eta_requests[req]
+        req = secrets.token_hex(4)
+        self._eta_requests[req] = (sender.id if sender else None, name, target_id, now)
+        title, message = messages.direct("eta_request", self.language, sender=name)
+        actions = [{"action": f"{ETA_ACTION_PREFIX}{req}_{m}", "title": messages.minutes_text(m, self.language)}
+                   for m in messages.ETA_CHOICES]
+        actions.append({"action": f"{ETA_ACTION_PREFIX}{req}_0",
+                        "title": "Ya llegué" if self.language == "es" else "I'm here"})
+        self._notify_member(target, title, message, {"tag": f"{DOMAIN}_eta_{req}", "group": DOMAIN,
+                                                     "actions": actions})
+        self._fire(EV_ETA_REQUEST, member=target.name, member_id=target.id, entity_id=target.entity_id,
+                   sender=name, sender_id=sender.id if sender else None)
+
+    @callback
+    def _on_notification_action(self, event: HaEvent) -> None:
+        action = str(event.data.get("action") or "")
+        if not action.startswith(ETA_ACTION_PREFIX):
+            return
+        try:
+            req, minutes = action[len(ETA_ACTION_PREFIX):].rsplit("_", 1)
+            minutes_int = int(minutes)
+        except ValueError:
+            return
+        request = self._eta_requests.pop(req, None)
+        if request is None:
+            return   # another circle's request, or already answered
+        asker_id, asker_name, target_id, _ = request
+        target = self.members.get(target_id)
+        if target is None:
+            return
+        meters = None
+        asker = self.members.get(asker_id) if asker_id else None
+        a = self.trackers[asker_id].last_fix if asker_id in self.trackers else None
+        b = self.trackers[target_id].last_fix if target_id in self.trackers else None
+        if a is not None and b is not None:
+            meters = distance_m(a.lat, a.lon, b.lat, b.lon)
+        kind = "eta_arrived" if minutes_int == 0 else "eta_reply"
+        title, message = messages.direct(
+            kind, self.language, name=target.name, minutes=messages.minutes_text(minutes_int, self.language),
+            distance_txt=messages.distance_text(meters, self.language) if minutes_int else "",
+        )
+        data: dict[str, Any] = {"tag": f"{DOMAIN}_eta_reply_{target_id}", "group": DOMAIN}
+        if b is not None:
+            url = messages.maps_url(b.lat, b.lon)
+            data.update({"url": url, "clickAction": url})
+        if asker is not None and asker.notify:
+            self._notify_member(asker, title, message, data)
+        else:
+            self.hass.async_create_task(self.hass.services.async_call(
+                "persistent_notification", "create", {"title": title, "message": message}))
+        self._fire(EV_ETA_REPLY, member=target.name, member_id=target.id, entity_id=target.entity_id,
+                   sender=asker_name, sender_id=asker_id, minutes=minutes_int)
+

@@ -108,3 +108,46 @@ def build(event_type: str, lang: str, name: str, when: datetime, place: str | No
 
 def maps_url(lat: float, lon: float) -> str:
     return f"https://www.google.com/maps/search/?api=1&query={lat:.6f},{lon:.6f}"
+
+
+# Direct messages between members (not circle alerts).
+DIRECT: dict[str, dict[str, tuple[str, str]]] = {
+    "es": {
+        "love": ("❤️ {sender}", "{sender} te manda un te quiero."),
+        "message": ("💬 {sender}", "{text}"),
+        "eta_request": ("⏱️ {sender} pregunta", "{sender} quiere saber cuándo llegas."),
+        "eta_reply": ("⏱️ {name} responde", "{name} llega en unos {minutes}.{distance_txt}"),
+        "eta_arrived": ("⏱️ {name} responde", "{name} ya llegó.{distance_txt}"),
+    },
+    "en": {
+        "love": ("❤️ {sender}", "{sender} sends you some love."),
+        "message": ("💬 {sender}", "{text}"),
+        "eta_request": ("⏱️ {sender} is asking", "{sender} wants to know when you'll arrive."),
+        "eta_reply": ("⏱️ {name} replied", "{name} will be there in about {minutes}.{distance_txt}"),
+        "eta_arrived": ("⏱️ {name} replied", "{name} is already there.{distance_txt}"),
+    },
+}
+
+ETA_CHOICES = (10, 30, 60)   # minutes offered as notification buttons (Android shows up to 3)
+SOMEONE = {"es": "Alguien", "en": "Someone"}
+
+
+def minutes_text(minutes: int, lang: str) -> str:
+    if minutes >= 60 and minutes % 60 == 0:
+        hours = minutes // 60
+        plural = "s" if hours > 1 else ""
+        return f"{hours} hora{plural}" if lang == "es" else f"{hours} hour{plural}"
+    return f"{minutes} min"
+
+
+def distance_text(meters: float | None, lang: str) -> str:
+    if meters is None:
+        return ""
+    km = _num(meters / 1000, lang)
+    return f" Está a {km} km de ti." if lang == "es" else f" {km} km away from you."
+
+
+def direct(kind: str, lang: str, **values: Any) -> tuple[str, str]:
+    title, message = DIRECT[lang][kind]
+    values.setdefault("distance_txt", "")
+    return title.format(**values), message.format(**values)

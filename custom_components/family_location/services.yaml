@@ -25,3 +25,27 @@ sos:
       required: false
       selector:
         text:
+
+send_message:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          domain:
+            - person
+            - device_tracker
+    message:
+      required: false
+      selector:
+        text:
+
+ask_eta:
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          domain:
+            - person
+            - device_tracker

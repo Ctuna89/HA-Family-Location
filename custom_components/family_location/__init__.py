@@ -32,7 +32,7 @@ SERVICE_SCHEMA = vol.Schema({
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """«check in» and «ask for help» actions."""
+    """Actions: check in, ask for help, send a message and ask for an ETA."""
 
     async def _run(call: ServiceCall, sos: bool) -> None:
         entity_id = call.data[ATTR_ENTITY_ID]
@@ -53,8 +53,28 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async def sos(call: ServiceCall) -> None:
         await _run(call, sos=True)
 
+    def _engine_member(entity_id: str) -> tuple[CircleEngine, str]:
+        for entry in hass.config_entries.async_loaded_entries(DOMAIN):
+            engine: CircleEngine = entry.runtime_data
+            if (member := engine.member_by_entity(entity_id)) is not None:
+                return engine, member.id
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="not_a_member",
+            translation_placeholders={"entity_id": entity_id},
+        )
+
+    async def send_message(call: ServiceCall) -> None:
+        engine, member_id = _engine_member(call.data[ATTR_ENTITY_ID])
+        await engine.async_send_message(member_id, call.context.user_id, call.data[ATTR_MESSAGE])
+
+    async def ask_eta(call: ServiceCall) -> None:
+        engine, member_id = _engine_member(call.data[ATTR_ENTITY_ID])
+        await engine.async_ask_eta(member_id, call.context.user_id)
+
     hass.services.async_register(DOMAIN, "check_in", check_in, schema=SERVICE_SCHEMA)
     hass.services.async_register(DOMAIN, "sos", sos, schema=SERVICE_SCHEMA)
+    hass.services.async_register(DOMAIN, "send_message", send_message, schema=SERVICE_SCHEMA)
+    hass.services.async_register(DOMAIN, "ask_eta", ask_eta, schema=SERVICE_SCHEMA)
     return True
 
 

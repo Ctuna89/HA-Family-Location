@@ -7,7 +7,7 @@ import pytest
 pytest.importorskip("pytest_homeassistant_custom_component")
 
 from homeassistant.config_entries import ConfigSubentryData  # noqa: E402
-from homeassistant.core import HomeAssistant, ServiceCall, callback  # noqa: E402
+from homeassistant.core import Context, HomeAssistant, ServiceCall, callback  # noqa: E402
 from homeassistant.data_entry_flow import FlowResultType  # noqa: E402
 from homeassistant.setup import async_setup_component  # noqa: E402
 from homeassistant.util import dt as dt_util  # noqa: E402
@@ -296,3 +296,58 @@ async def test_alert_when_not_together(hass: HomeAssistant, freezer):
     assert janet == []          # waits a bit in case he was accompanied
     await advance(hass, freezer, 120)
     assert [c.data["title"] for c in janet] == ["🚶 James salió de Casa"]
+
+
+async def test_send_love_identifies_sender(hass: HomeAssistant):
+    """James presses «Send love» on Janet: Janet gets «James sends you some love»."""
+    hass.config.language = "en"
+    janet = capture_notify(hass, "mobile_app_janet")
+    james = capture_notify(hass, "mobile_app_james")
+    tracker(hass, "device_tracker.james", *HOME)
+    tracker(hass, "device_tracker.janet", *WORK)
+    user = await hass.auth.async_create_user("James user")
+    hass.states.async_set("person.james", "home", {"user_id": user.id, "device_trackers": ["device_tracker.james"]})
+    await setup_circle(hass)
+    await hass.services.async_call("button", "press", {"entity_id": "button.janet_send_love"},
+                                   blocking=True, context=Context(user_id=user.id))
+    await hass.async_block_till_done()
+    assert [(c.data["title"], c.data["message"]) for c in janet] == [("❤️ James", "James sends you some love.")]
+    assert james == []
+
+    await hass.services.async_call(DOMAIN, "send_message",
+                                   {"entity_id": "device_tracker.james", "message": "Dinner at 8?"},
+                                   blocking=True, context=Context(user_id=None))
+    await hass.async_block_till_done()
+    assert james[0].data["title"] == "💬 Someone" and james[0].data["message"] == "Dinner at 8?"
+
+
+async def test_ask_eta_and_reply(hass: HomeAssistant):
+    hass.config.language = "es"
+    janet = capture_notify(hass, "mobile_app_janet")
+    james = capture_notify(hass, "mobile_app_james")
+    events = []
+    hass.bus.async_listen(EVENT_NAME, callback(lambda e: events.append(e.data["type"])))
+    tracker(hass, "device_tracker.james", *HOME)
+    tracker(hass, "device_tracker.janet", *WORK)
+    user = await hass.auth.async_create_user("James user")
+    hass.states.async_set("person.james", "home", {"user_id": user.id, "device_trackers": ["device_tracker.james"]})
+    await setup_circle(hass)
+
+    await hass.services.async_call("button", "press", {"entity_id": "button.janet_preguntar_hora_de_llegada"},
+                                   blocking=True, context=Context(user_id=user.id))
+    await hass.async_block_till_done()
+    ask = janet[0].data
+    assert ask["message"] == "James quiere saber cuándo llegas."
+    actions = ask["data"]["actions"]
+    assert [a["title"] for a in actions] == ["10 min", "30 min", "1 hora", "Ya llegué"]
+
+    hass.bus.async_fire("mobile_app_notification_action", {"action": actions[1]["action"]})
+    await hass.async_block_till_done()
+    assert james[0].data["title"] == "⏱️ Janet responde"
+    assert james[0].data["message"].startswith("Janet llega en unos 30 min. Está a 5,")
+    assert "maps" in james[0].data["data"]["url"]
+
+    hass.bus.async_fire("mobile_app_notification_action", {"action": actions[0]["action"]})   # ya respondida
+    await hass.async_block_till_done()
+    assert len(james) == 1
+    assert events == ["eta_request", "eta_reply"]

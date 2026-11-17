@@ -1,6 +1,16 @@
 {
   "services": {
-    "check_in": {"service": "mdi:map-marker-check"},
-    "sos": {"service": "mdi:alarm-light"}
+    "check_in": {
+      "service": "mdi:map-marker-check"
+    },
+    "sos": {
+      "service": "mdi:alarm-light"
+    },
+    "send_message": {
+      "service": "mdi:heart"
+    },
+    "ask_eta": {
+      "service": "mdi:clock-time-four-outline"
+    }
   }
 }
