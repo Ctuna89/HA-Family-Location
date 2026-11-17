@@ -60,10 +60,6 @@ EV_SPEEDING = "speeding"
 EV_LOW_BATTERY = "low_battery"
 EV_CHECK_IN = "check_in"
 EV_SOS = "sos"
-EV_LOVE = "love"
-EV_MESSAGE = "message"
-EV_ETA_REQUEST = "eta_request"
-EV_ETA_REPLY = "eta_reply"
 
 # Movement states
 STATUS_STILL = "still"

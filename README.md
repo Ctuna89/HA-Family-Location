@@ -24,8 +24,6 @@ the **Home Assistant Companion app** on each phone, and everything is computed i
 | ⚠️ **Speeding** | Per-person limit (e.g. 100 km/h for the new teen driver). Confirmed by two consecutive readings to avoid false alerts from GPS jumps |
 | 🔋 **Low battery** | The circle is alerted when someone's phone drops below the threshold |
 | ✅ **Check-in** | A button (and action) that tells everyone «James is at Home» or «near 742 Evergreen Terrace» |
-| ❤️ **Send love** | One tap on someone's «Send love» button and they get «James sends you some love». The sender is recognized from their Home Assistant user |
-| ⏱️ **Ask ETA** | Ask someone when they'll arrive; they answer from the notification (10 min / 30 min / 1 hour / I'm here) and you get the answer with how far away they are |
 | 🆘 **Ask for help** | A button that sends a **critical** alert (rings even on silent) with a link to the location |
 | 📫 **Approximate address** | Optional: when someone is stopped away from their places, their address is shown |
 | 🤖 **Events for automations** | Every arrival, departure, trip, speeding, battery, check-in and SOS fires the `family_location_event` event |
@@ -91,7 +89,6 @@ Per member (a device with their name; entity IDs depend on your Home Assistant l
 | `sensor.<name>_last_trip` | km of the last trip; origin, destination, times, duration and top speed in attributes |
 | `sensor.<name>_phone_battery` | Battery % |
 | `button.<name>_check_in` / `button.<name>_ask_for_help` | Alert the circle |
-| `button.<name>_send_love` / `button.<name>_ask_eta` | Send love to that member / ask them when they'll arrive (the sender is whoever presses it) |
 
 Per place: `sensor.<place>_people` (how many and who) and `binary_sensor.<place>_occupied`.
 
@@ -110,22 +107,6 @@ data:
   entity_id: person.janet
 ```
 
-```yaml
-action: family_location.send_message   # without «message» it sends some love ❤️
-data:
-  entity_id: person.janet
-  message: "Dinner at 8?"
-```
-
-```yaml
-action: family_location.ask_eta
-data:
-  entity_id: person.janet
-```
-
-Messages and ETA questions are signed with the name of whoever triggers them: the member linked to their Home
-Assistant user (through their person), or the user's name.
-
 ## Automations with the event
 
 ```yaml
@@ -141,8 +122,7 @@ actions:
       entity_id: light.porch
 ```
 
-Types: `arrive`, `leave`, `trip_start`, `trip_end`, `speeding`, `low_battery`, `check_in`, `sos`, `love`,
-`message`, `eta_request`, `eta_reply`. The event
+Types: `arrive`, `leave`, `trip_start`, `trip_end`, `speeding`, `low_battery`, `check_in`, `sos`. The event
 includes `member`, `entity_id`, `place`, `latitude`, `longitude` and the trip or speed data.
 
 ## Example card

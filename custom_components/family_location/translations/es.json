@@ -198,12 +198,6 @@
       },
       "sos": {
         "name": "Pedir ayuda"
-      },
-      "send_love": {
-        "name": "Enviar un te quiero"
-      },
-      "ask_eta": {
-        "name": "Preguntar hora de llegada"
       }
     }
   },
@@ -233,30 +227,6 @@
         "message": {
           "name": "Mensaje",
           "description": "Texto opcional que se agrega al aviso."
-        }
-      }
-    },
-    "send_message": {
-      "name": "Enviar mensaje",
-      "description": "Envía un mensaje a un integrante. Sin texto, le manda un te quiero ❤️.",
-      "fields": {
-        "entity_id": {
-          "name": "Para",
-          "description": "Integrante que recibe el mensaje."
-        },
-        "message": {
-          "name": "Mensaje",
-          "description": "Texto. Vacío = «te quiero»."
-        }
-      }
-    },
-    "ask_eta": {
-      "name": "Preguntar hora de llegada",
-      "description": "Le pregunta a un integrante cuándo llega; responde con un botón de la notificación.",
-      "fields": {
-        "entity_id": {
-          "name": "A quién",
-          "description": "Integrante al que se le pregunta."
         }
       }
     }

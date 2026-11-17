@@ -22,8 +22,6 @@ Sin cuentas, sin suscripción y sin que tu ubicación pase por servidores de ter
 | ⚠️ **Exceso de velocidad** | Límite por persona (p. ej. 100 km/h para el hijo que recién maneja). Se confirma con dos lecturas seguidas para evitar falsos avisos por saltos del GPS |
 | 🔋 **Batería baja** | Aviso al círculo cuando el teléfono de alguien baja del umbral |
 | ✅ **Check-in** | Botón (y acción) que avisa a todos «James está en Casa» o «cerca de Av. Matta 100» |
-| ❤️ **Enviar un te quiero** | Un toque en el botón «Enviar un te quiero» de alguien y le llega «James te manda un te quiero». Quien lo envía se reconoce por su usuario de Home Assistant |
-| ⏱️ **Preguntar hora de llegada** | Le preguntas a alguien cuándo llega; responde desde la notificación (10 min / 30 min / 1 hora / Ya llegué) y te llega la respuesta con lo lejos que está |
 | 🆘 **Pedir ayuda** | Botón que envía una alerta **crítica** (suena aunque el teléfono esté en silencio) con un enlace a la ubicación |
 | 📫 **Dirección aproximada** | Opcional: cuando alguien está detenido fuera de sus lugares se muestra la dirección |
 | 🤖 **Eventos para automatizar** | Cada llegada, salida, viaje, exceso, batería, check-in y SOS genera el evento `family_location_event` |
@@ -90,7 +88,6 @@ Por cada integrante (dispositivo con su nombre):
 | `sensor.<nombre>_ultimo_viaje` | km del último viaje; origen, destino, horas, duración y velocidad máxima en atributos |
 | `sensor.<nombre>_bateria_del_telefono` | % de batería |
 | `button.<nombre>_check_in` / `button.<nombre>_pedir_ayuda` | Avisan al círculo |
-| `button.<nombre>_enviar_un_te_quiero` / `button.<nombre>_preguntar_hora_de_llegada` | Le manda un te quiero a esa persona / le pregunta cuándo llega (lo envía quien presiona el botón) |
 
 Por cada lugar: `sensor.<lugar>_personas` (cuántos y quiénes) y `binary_sensor.<lugar>_hay_alguien`.
 
@@ -109,22 +106,6 @@ data:
   entity_id: person.janet
 ```
 
-```yaml
-action: family_location.send_message   # sin «message» envía un te quiero ❤️
-data:
-  entity_id: person.janet
-  message: "¿Cenamos a las 8?"
-```
-
-```yaml
-action: family_location.ask_eta
-data:
-  entity_id: person.janet
-```
-
-Los mensajes y preguntas van firmados con el nombre de quien los envía: el integrante ligado a su usuario de
-Home Assistant (a través de su persona), o el nombre del usuario.
-
 ## Automatizaciones con el evento
 
 ```yaml
@@ -140,8 +121,7 @@ actions:
       entity_id: light.entrada
 ```
 
-Tipos: `arrive`, `leave`, `trip_start`, `trip_end`, `speeding`, `low_battery`, `check_in`, `sos`, `love`,
-`message`, `eta_request`, `eta_reply`. El evento trae
+Tipos: `arrive`, `leave`, `trip_start`, `trip_end`, `speeding`, `low_battery`, `check_in`, `sos`. El evento trae
 `member`, `entity_id`, `place`, `latitude`, `longitude` y los datos del viaje o la velocidad.
 
 ## Tarjeta de ejemplo

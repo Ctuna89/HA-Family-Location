@@ -198,12 +198,6 @@
       },
       "sos": {
         "name": "Ask for help"
-      },
-      "send_love": {
-        "name": "Send love"
-      },
-      "ask_eta": {
-        "name": "Ask ETA"
       }
     }
   },
@@ -233,30 +227,6 @@
         "message": {
           "name": "Message",
           "description": "Optional text added to the alert."
-        }
-      }
-    },
-    "send_message": {
-      "name": "Send message",
-      "description": "Sends a message to a member. Without text it sends some love ❤️.",
-      "fields": {
-        "entity_id": {
-          "name": "To",
-          "description": "Member who receives the message."
-        },
-        "message": {
-          "name": "Message",
-          "description": "Text. Empty = «sends you some love»."
-        }
-      }
-    },
-    "ask_eta": {
-      "name": "Ask ETA",
-      "description": "Asks a member when they'll arrive; they answer with a notification button.",
-      "fields": {
-        "entity_id": {
-          "name": "Who",
-          "description": "Member being asked."
         }
       }
     }
