@@ -23,7 +23,8 @@ Sin cuentas, sin suscripción y sin que tu ubicación pase por servidores de ter
 | 🔋 **Batería baja** | Aviso al círculo cuando el teléfono de alguien baja del umbral |
 | ✅ **Check-in** | Botón (y acción) que avisa a todos «James está en Casa» o «cerca de Av. Matta 100» |
 | 🆘 **Pedir ayuda** | Botón que envía una alerta **crítica** (suena aunque el teléfono esté en silencio) con un enlace a la ubicación |
-| 📫 **Dirección aproximada** | Opcional: cuando alguien está detenido fuera de sus lugares se muestra la dirección |
+| 🗺️ **También tus zonas de HA** | Si alguien está dentro de una zona de Home Assistant que no agregaste como lugar (por ejemplo «Gimnasio»), se muestra el nombre de la zona en vez de la dirección. Opcional, activado por defecto |
+| 📫 **Dirección aproximada** | Opcional: cuando alguien está detenido fuera de sus lugares y zonas se muestra la dirección |
 | 🤖 **Eventos para automatizar** | Cada llegada, salida, viaje, exceso, batería, check-in y SOS genera el evento `family_location_event` |
 
 ## Requisitos
@@ -79,7 +80,7 @@ Por cada integrante (dispositivo con su nombre):
 
 | Entidad | Qué muestra |
 |---|---|
-| `sensor.<nombre>_lugar` | Lugar donde está, o su dirección aproximada, o «fuera». Atributos: desde cuándo, coordenadas, precisión, última vez visto |
+| `sensor.<nombre>_lugar` | Lugar donde está, o la zona de Home Assistant en que está, o su dirección aproximada, o «fuera». Atributos: desde cuándo, zona, coordenadas, precisión, última vez visto |
 | `sensor.<nombre>_estado` | Quieto · En movimiento · Conduciendo (valores internos: `still`, `moving`, `driving`). Durante un viaje: distancia, duración y velocidad máxima hasta ahora |
 | `sensor.<nombre>_velocidad` | km/h |
 | `binary_sensor.<nombre>_en_movimiento` | Encendido mientras hay un viaje en curso |

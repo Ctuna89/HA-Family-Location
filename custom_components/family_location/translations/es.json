@@ -32,13 +32,15 @@
           "driving_speed": "Velocidad para considerar «conduciendo»",
           "stop_minutes": "Minutos detenido para terminar un viaje",
           "start_distance": "Distancia desde el punto de reposo para empezar un viaje",
-          "max_accuracy": "Ignorar posiciones con precisión peor que"
+          "max_accuracy": "Ignorar posiciones con precisión peor que",
+          "show_zones": "Mostrar el nombre de la zona de Home Assistant cuando no está en un lugar"
         },
         "data_description": {
           "safety_recipients": "Vacío = todos los demás integrantes.",
           "reverse_geocode": "Consulta OpenStreetMap con la posición (solo cuando la persona está detenida fuera de sus lugares).",
           "max_accuracy": "Evita avisos falsos por ubicaciones imprecisas (por ejemplo, por antenas de celular).",
-          "stop_minutes": "Un viaje termina recién tras estos minutos sin moverse: un semáforo o un taco no lo cortan."
+          "stop_minutes": "Un viaje termina recién tras estos minutos sin moverse: un semáforo o un taco no lo cortan.",
+          "show_zones": "Si alguien está dentro de una zona de Home Assistant que no agregaste como lugar (por ejemplo «Gimnasio»), el sensor «Lugar» muestra el nombre de la zona en vez de la dirección. No genera avisos de llegada ni salida."
         }
       }
     }

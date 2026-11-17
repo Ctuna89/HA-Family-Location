@@ -25,7 +25,8 @@ the **Home Assistant Companion app** on each phone, and everything is computed i
 | 🔋 **Low battery** | The circle is alerted when someone's phone drops below the threshold |
 | ✅ **Check-in** | A button (and action) that tells everyone «James is at Home» or «near 742 Evergreen Terrace» |
 | 🆘 **Ask for help** | A button that sends a **critical** alert (rings even on silent) with a link to the location |
-| 📫 **Approximate address** | Optional: when someone is stopped away from their places, their address is shown |
+| 🗺️ **Your HA zones too** | If someone is inside a Home Assistant zone you didn't add as a place (e.g. «Gym»), their place shows the zone name instead of a street address. Optional, on by default |
+| 📫 **Approximate address** | Optional: when someone is stopped away from their places and zones, their address is shown |
 | 🤖 **Events for automations** | Every arrival, departure, trip, speeding, battery, check-in and SOS fires the `family_location_event` event |
 | 🌍 **Languages** | English and Spanish (notifications follow your Home Assistant language) |
 
@@ -80,7 +81,7 @@ Per member (a device with their name; entity IDs depend on your Home Assistant l
 
 | Entity | What it shows |
 |---|---|
-| `sensor.<name>_place` | Place where they are, or their approximate address, or «away». Attributes: since when, coordinates, accuracy, last seen |
+| `sensor.<name>_place` | Place where they are, or the Home Assistant zone they're in, or their approximate address, or «away». Attributes: since when, zone, coordinates, accuracy, last seen |
 | `sensor.<name>_status` | `still` · `moving` · `driving`. During a trip: distance, duration and top speed so far |
 | `sensor.<name>_speed` | km/h |
 | `binary_sensor.<name>_moving` | On while a trip is in progress |

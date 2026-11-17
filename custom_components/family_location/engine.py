@@ -43,6 +43,7 @@ from .const import (
     CONF_RECEIVE_ALERTS,
     CONF_RECIPIENTS,
     CONF_REVERSE_GEOCODE,
+    CONF_SHOW_ZONES,
     CONF_SAFETY_RECIPIENTS,
     CONF_SPEED_LIMIT,
     CONF_START_DISTANCE,
@@ -196,6 +197,9 @@ class CircleEngine:
         self._unsubs.append(async_track_time_interval(self.hass, self._on_tick, TICK))
         for member_id in self.members:
             self._update_member(member_id)
+            if not self.addresses.get(member_id):
+                # e.g. after turning off «show zone names»: look up the address without waiting for a move
+                self._maybe_geocode(member_id)
 
     async def async_stop(self) -> None:
         for unsub in self._unsubs:
@@ -368,6 +372,8 @@ class CircleEngine:
         tracker = self.trackers[member_id]
         if tracker.last_fix is None or tracker.places or tracker.trip is not None:
             return
+        if self.current_zone(member_id) is not None:
+            return   # the zone name is shown instead, no need to look up the address
         self._geocoding.add(member_id)
         self.entry.async_create_background_task(
             self.hass, self._geocode(member_id), f"{DOMAIN} address {member_id}"
@@ -390,6 +396,33 @@ class CircleEngine:
     def current_place_name(self, member_id: str) -> str | None:
         ids = self.trackers[member_id].current_place_ids() if member_id in self.trackers else []
         return self.places[ids[0]].name if ids and ids[0] in self.places else None
+
+    def current_zone(self, member_id: str) -> State | None:
+        """The Home Assistant zone the member is in (smallest one), when the option is on and they are at none
+        of the circle's places. Passive zones are skipped, like Home Assistant does for persons."""
+        if not self.options.get(CONF_SHOW_ZONES, True):
+            return None
+        tracker = self.trackers.get(member_id)
+        if tracker is None or tracker.last_fix is None or tracker.places:
+            return None
+        fix = tracker.last_fix
+        found: tuple[float, State] | None = None
+        for zone in self.hass.states.async_all("zone"):
+            attrs = zone.attributes
+            if attrs.get("passive"):
+                continue
+            try:
+                lat, lon = float(attrs[ATTR_LATITUDE]), float(attrs[ATTR_LONGITUDE])
+                radius = float(attrs.get("radius", 0))
+            except (KeyError, TypeError, ValueError):
+                continue
+            if distance_m(lat, lon, fix.lat, fix.lon) <= radius and (found is None or radius < found[0]):
+                found = (radius, zone)
+        return found[1] if found else None
+
+    def current_zone_name(self, member_id: str) -> str | None:
+        zone = self.current_zone(member_id)
+        return zone.name if zone is not None else None
 
     def _recipients(self, subject: MemberConfig, chosen: list[str]) -> list[MemberConfig]:
         notify_self = bool(self.options.get(CONF_NOTIFY_SELF, False))
@@ -517,7 +550,7 @@ class CircleEngine:
         member = self.members[member_id]
         tracker = self.trackers[member_id]
         fix = self.read_fix(member) or tracker.last_fix
-        place = self.current_place_name(member_id)
+        place = self.current_place_name(member_id) or self.current_zone_name(member_id)
         address = None
         if fix is not None and place is None:
             address = await geocode.reverse(async_get_clientsession(self.hass), fix.lat, fix.lon, self.language)

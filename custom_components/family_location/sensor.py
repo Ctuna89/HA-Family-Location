@@ -31,7 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: FamilyLocationConfigEntr
 
 
 class PlaceSensor(MemberEntity, SensorEntity):
-    """Place where they are (or the approximate address, or «away»)."""
+    """Place where they are; otherwise the Home Assistant zone they are in, the approximate address, or «away»."""
 
     _attr_icon = "mdi:map-marker-account"
 
@@ -43,6 +43,8 @@ class PlaceSensor(MemberEntity, SensorEntity):
         name = self.engine.current_place_name(self.member.id)
         if name:
             return name
+        if zone := self.engine.current_zone_name(self.member.id):
+            return zone
         if self.tracker.trip is None and (address := self.engine.addresses.get(self.member.id)):
             return address[:255]
         return AWAY[self.engine.language]
@@ -55,6 +57,7 @@ class PlaceSensor(MemberEntity, SensorEntity):
         fix = t.last_fix
         return {
             "in_place": bool(ids),
+            "zone": zone.entity_id if (zone := self.engine.current_zone(self.member.id)) else None,
             "place_id": ids[0] if ids else None,
             "places": [self.engine.places[i].name for i in ids if i in self.engine.places],
             "since": since.isoformat() if since else None,

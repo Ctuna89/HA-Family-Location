@@ -48,6 +48,7 @@ from .const import (
     CONF_RECEIVE_ALERTS,
     CONF_RECIPIENTS,
     CONF_REVERSE_GEOCODE,
+    CONF_SHOW_ZONES,
     CONF_SAFETY_RECIPIENTS,
     CONF_SPEED_LIMIT,
     CONF_START_DISTANCE,
@@ -181,6 +182,7 @@ def default_options() -> dict[str, Any]:
         CONF_NOTIFY_TRIPS: False,
         CONF_NOTIFY_SELF: False,
         CONF_REVERSE_GEOCODE: True,
+        CONF_SHOW_ZONES: True,
         CONF_SAFETY_RECIPIENTS: [],
         CONF_LOW_BATTERY: DEFAULT_LOW_BATTERY,
         CONF_MOVING_SPEED: DEFAULT_MOVING_SPEED,
@@ -208,6 +210,7 @@ class FamilyLocationOptionsFlow(OptionsFlow):
                 m for m in opts[CONF_SAFETY_RECIPIENTS] if m in {o["value"] for o in members}
             ]): _multi_select(members),
             vol.Required(CONF_NOTIFY_SELF, default=opts[CONF_NOTIFY_SELF]): selector.BooleanSelector(),
+            vol.Required(CONF_SHOW_ZONES, default=opts[CONF_SHOW_ZONES]): selector.BooleanSelector(),
             vol.Required(CONF_REVERSE_GEOCODE, default=opts[CONF_REVERSE_GEOCODE]): selector.BooleanSelector(),
             vol.Required(CONF_MOVING_SPEED, default=opts[CONF_MOVING_SPEED]): _number(3, 30, 1, "km/h"),
             vol.Required(CONF_DRIVING_SPEED, default=opts[CONF_DRIVING_SPEED]): _number(10, 60, 1, "km/h"),

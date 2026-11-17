@@ -32,13 +32,15 @@
           "driving_speed": "Speed to consider «driving»",
           "stop_minutes": "Minutes stopped to end a trip",
           "start_distance": "Distance from resting point to start a trip",
-          "max_accuracy": "Ignore positions less accurate than"
+          "max_accuracy": "Ignore positions less accurate than",
+          "show_zones": "Show the Home Assistant zone name when not at a place"
         },
         "data_description": {
           "safety_recipients": "Empty = every other member.",
           "reverse_geocode": "Queries OpenStreetMap with the position (only when the person is stopped away from their places).",
           "max_accuracy": "Avoids false alerts from inaccurate locations (e.g. cell towers).",
-          "stop_minutes": "A trip ends only after this many minutes without moving: a traffic light or a jam doesn't end it."
+          "stop_minutes": "A trip ends only after this many minutes without moving: a traffic light or a jam doesn't end it.",
+          "show_zones": "If someone is inside a Home Assistant zone you didn't add as a place (e.g. «Gym»), the «Place» sensor shows the zone name instead of the address. It doesn't trigger arrival or departure alerts."
         }
       }
     }

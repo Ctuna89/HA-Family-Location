@@ -296,3 +296,44 @@ async def test_alert_when_not_together(hass: HomeAssistant, freezer):
     assert janet == []          # waits a bit in case he was accompanied
     await advance(hass, freezer, 120)
     assert [c.data["title"] for c in janet] == ["🚶 James salió de Casa"]
+
+
+GYM = (-33.4250, -70.6200)
+
+
+async def test_zone_name_instead_of_address(hass: HomeAssistant):
+    """Inside a HA zone that isn't a place: the place sensor shows the zone name, not the address."""
+    hass.config.language = "en"
+    hass.states.async_set("zone.gym", "0", {"latitude": GYM[0], "longitude": GYM[1], "radius": 100,
+                                            "friendly_name": "Gym", "passive": False})
+    hass.states.async_set("zone.big_area", "0", {"latitude": GYM[0], "longitude": GYM[1], "radius": 3000,
+                                                 "friendly_name": "Downtown", "passive": False})
+    hass.states.async_set("zone.hidden", "0", {"latitude": GYM[0], "longitude": GYM[1], "radius": 50,
+                                               "friendly_name": "Hidden", "passive": True})
+    tracker(hass, "device_tracker.james", *GYM)
+    tracker(hass, "device_tracker.janet", *HOME)
+    with patch("custom_components.family_location.engine.geocode.reverse", return_value="1 Main St") as reverse:
+        entry = await setup_circle(hass)
+        state = hass.states.get("sensor.james_place")
+        assert state.state == "Gym"                       # smallest active zone, passive ones skipped
+        assert state.attributes["zone"] == "zone.gym"
+        assert hass.states.get("sensor.janet_place").state == "Casa"   # circle places still win
+        assert reverse.call_count == 0                    # no address lookup needed inside a zone
+
+        hass.config_entries.async_update_entry(entry, options={**entry.options, "show_zones": False})
+        await hass.async_block_till_done()
+        assert hass.states.get("sensor.james_place").state == "1 Main St"
+
+
+async def test_check_in_uses_zone_name(hass: HomeAssistant):
+    hass.config.language = "en"
+    calls = capture_notify(hass, "mobile_app_janet")
+    capture_notify(hass, "mobile_app_james")
+    hass.states.async_set("zone.gym", "0", {"latitude": GYM[0], "longitude": GYM[1], "radius": 100,
+                                            "friendly_name": "Gym"})
+    tracker(hass, "device_tracker.james", *GYM)
+    tracker(hass, "device_tracker.janet", *HOME)
+    await setup_circle(hass)
+    await hass.services.async_call(DOMAIN, "check_in", {"entity_id": "device_tracker.james"}, blocking=True)
+    await hass.async_block_till_done()
+    assert calls[0].data["message"] == "James is at Gym."

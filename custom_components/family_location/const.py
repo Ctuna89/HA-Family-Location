@@ -38,6 +38,7 @@ CONF_NOTIFY_SPEEDING = "notify_speeding"
 CONF_NOTIFY_BATTERY = "notify_battery"
 CONF_SAFETY_RECIPIENTS = "safety_recipients"
 CONF_REVERSE_GEOCODE = "reverse_geocode"
+CONF_SHOW_ZONES = "show_zones"   # show the HA zone name when not at a place
 CONF_NOTIFY_SELF = "notify_self"
 
 DEFAULT_RADIUS = 150
