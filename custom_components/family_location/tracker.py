@@ -1,7 +1,7 @@
-"""Lógica de seguimiento de un integrante, sin dependencias de Home Assistant.
+"""Tracking logic for one member, without Home Assistant dependencies.
 
-Recibe posiciones (``Fix``) y devuelve eventos (``Event``): llegadas y salidas de lugares, inicio y fin de
-viajes, excesos de velocidad y batería baja. Todo se calcula localmente; así se puede probar sin HA.
+Takes positions (``Fix``) and returns events (``Event``): place arrivals and departures, trip start and
+end, speeding and low battery. Everything is computed locally, so it can be tested without HA.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ EARTH_RADIUS_M = 6_371_008.8
 
 
 def distance_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Distancia en metros entre dos puntos (fórmula del semiverseno)."""
+    """Distance in meters between two points (haversine formula)."""
     p1, p2 = math.radians(lat1), math.radians(lat2)
     dp, dl = p2 - p1, math.radians(lon2 - lon1)
     a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
@@ -47,26 +47,26 @@ def distance_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 @dataclass(frozen=True)
 class Fix:
-    """Una posición informada por el teléfono."""
+    """A position reported by the phone."""
 
     lat: float
     lon: float
     time: datetime
     accuracy: float | None = None
-    speed_kmh: float | None = None   # velocidad informada por el teléfono, si la hay
+    speed_kmh: float | None = None   # speed reported by the phone, if any
     battery: int | None = None
 
 
 @dataclass(frozen=True)
 class Place:
-    """Un lugar con su círculo."""
+    """A place with its radius."""
 
     id: str
     name: str
     lat: float
     lon: float
     radius: float
-    instant: bool = False   # True: avisa apenas entra (Casa). False: espera a que se quede detenido ahí
+    instant: bool = False   # True: alert on entry (Home). False: wait until the person stays there
 
     def distance(self, lat: float, lon: float) -> float:
         return distance_m(self.lat, self.lon, lat, lon)
@@ -80,7 +80,7 @@ class Settings:
     start_distance: float = DEFAULT_START_DISTANCE
     max_accuracy: float = DEFAULT_MAX_ACCURACY
     low_battery: int = DEFAULT_LOW_BATTERY
-    speed_limit: float = 0   # km/h, 0 = sin aviso
+    speed_limit: float = 0   # km/h, 0 = no alert
 
 
 @dataclass
@@ -136,29 +136,29 @@ def _dt(value: str | None) -> datetime | None:
 
 
 class MemberTracker:
-    """Estado de un integrante: dónde está, si se mueve, su viaje actual y el último."""
+    """A member's state: where they are, whether they move, the current trip and the last one."""
 
     def __init__(self) -> None:
         self.initialized = False
-        self.places: dict[str, datetime] = {}   # id del lugar -> desde cuándo está ahí (llegada confirmada)
-        self.pending: dict[str, datetime] = {}  # entró al radio pero aún no se confirma que se quedó ahí
+        self.places: dict[str, datetime] = {}   # place id -> since when they are there (confirmed arrival)
+        self.pending: dict[str, datetime] = {}  # entered the radius but not yet confirmed as staying
         self.last_fix: Fix | None = None
         self.speed_kmh: float | None = None
-        self.anchor: tuple[float, float] | None = None   # punto de reposo
+        self.anchor: tuple[float, float] | None = None   # resting point
         self.still_since: datetime | None = None
         self.trip: Trip | None = None
         self.last_trip: dict[str, Any] | None = None
         self.day: date | None = None
         self.distance_today_m = 0.0
         self.trips_today = 0
-        self.over_limit = 0             # lecturas seguidas sobre el límite
+        self.over_limit = 0             # consecutive readings over the limit
         self.speeding = False
         self.last_speeding_alert: datetime | None = None
         self.battery: int | None = None
         self.battery_alerted = False
-        self.away_since: datetime | None = None   # desde cuándo no está en ningún lugar
+        self.away_since: datetime | None = None   # since when they are at no place
 
-    # ------------------------------------------------------------------ estado derivado
+    # ------------------------------------------------------------------ derived state
     @property
     def status(self) -> str:
         if not self.initialized:
@@ -174,29 +174,29 @@ class MemberTracker:
         return self.trip is not None
 
     def current_place_ids(self) -> list[str]:
-        """Lugares donde está, el más reciente primero."""
+        """Places where they are, most recent first."""
         return [pid for pid, _ in sorted(self.places.items(), key=lambda kv: kv[1], reverse=True)]
 
-    # ------------------------------------------------------------------ entrada
+    # ------------------------------------------------------------------ input
     def process(self, fix: Fix, places: list[Place], settings: Settings) -> list[Event]:
-        """Procesa una posición nueva y devuelve los eventos que genera."""
+        """Processes a new position and returns the events it produces."""
         self._driving_speed = settings.driving_speed
         events: list[Event] = []
         self._roll_day(fix.time)
         events += self._battery(fix, settings)
 
         if fix.accuracy is not None and fix.accuracy > settings.max_accuracy:
-            return events   # posición demasiado imprecisa: solo se usa la batería
+            return events   # position too inaccurate: only the battery is used
 
         prev = self.last_fix
         if prev is not None and fix.time <= prev.time and (fix.lat, fix.lon) == (prev.lat, prev.lon):
-            return events   # misma posición repetida
+            return events   # same position repeated
 
         speed = self._speed(prev, fix)
         self.speed_kmh = speed
 
         if not self.initialized:
-            # Primera posición (o tras reiniciar sin estado): se toma tal cual, sin avisos.
+            # First position (or after a restart without state): taken as is, without alerts.
             for place in places:
                 if place.distance(fix.lat, fix.lon) <= place.radius:
                     self.places[place.id] = fix.time
@@ -207,14 +207,14 @@ class MemberTracker:
             self.last_fix = fix
             return events
 
-        # Lugares que ya no existen
+        # Places that no longer exist
         known = {p.id for p in places}
         for pid in [pid for pid in self.places if pid not in known]:
             del self.places[pid]
         for pid in [pid for pid in self.pending if pid not in known]:
             del self.pending[pid]
 
-        # --- lugares
+        # --- places
         entered: list[Place] = []
         for place in places:
             dist = place.distance(fix.lat, fix.lon)
@@ -225,9 +225,9 @@ class MemberTracker:
                 if self.pending.pop(place.id, None) is None:
                     del self.places[place.id]
                     events.append(Event(EV_LEAVE, fix.time, place.id, place.name, {"distance_m": round(dist)}))
-                # si solo estaba de paso (sin confirmar) no se avisa nada
+                # if they were just passing through (unconfirmed) nothing is announced
 
-        # --- viaje
+        # --- trip
         anchor_dist = distance_m(*self.anchor, fix.lat, fix.lon) if self.anchor else 0.0
         moving_now = (speed or 0) >= settings.moving_speed or anchor_dist > settings.start_distance
 
@@ -263,9 +263,9 @@ class MemberTracker:
                 self.trip.max_speed = max(self.trip.max_speed, speed)
             events += self._speeding(fix, speed, settings)
 
-        # Llegadas: a Casa (lugar «inmediato») o sin viaje en curso se confirma al tiro; en los demás
-        # lugares queda pendiente hasta que se quede detenido ahí (pasar por fuera o parar en un semáforo
-        # dentro del radio no cuenta como llegar).
+        # Arrivals: at Home (an «instant» place) or with no trip in progress they are confirmed right away;
+        # elsewhere they stay pending until the person stays stopped there (driving past or stopping at a
+        # traffic light inside the radius is not an arrival).
         for place in entered:
             if place.instant or self.trip is None:
                 self.places[place.id] = fix.time
@@ -286,8 +286,8 @@ class MemberTracker:
         return events
 
     def tick(self, now: datetime, places: list[Place], settings: Settings) -> list[Event]:
-        """Revisión periódica: un viaje termina solo tras ``stop_minutes`` sin moverse (un semáforo o un
-        taco no lo cortan) y recién ahí se confirma la llegada a un lugar que no sea inmediato."""
+        """Periodic check: a trip only ends after ``stop_minutes`` without moving (a traffic light or a
+        jam doesn't end it), and only then is the arrival at a non-instant place confirmed."""
         self._roll_day(now)
         trip = self.trip
         if trip is None or trip.last_move is None:
@@ -302,7 +302,7 @@ class MemberTracker:
         if self.last_fix is not None:
             lat, lon = self.last_fix.lat, self.last_fix.lon
         self.speed_kmh = 0.0
-        # Detenido el tiempo suficiente: las llegadas pendientes se confirman antes de cerrar el viaje.
+        # Stopped long enough: pending arrivals are confirmed before closing the trip.
         events = self._confirm_pending(now, places, settings, force=True)
         place = self._place_name_at((lat, lon), places)
         events.append(self._end_trip(trip.last_move, lat, lon, place))
@@ -311,8 +311,8 @@ class MemberTracker:
 
     def _confirm_pending(self, now: datetime, places: list[Place], settings: Settings,
                          force: bool = False) -> list[Event]:
-        """Confirma las llegadas pendientes: sin viaje en curso, al cerrar el viaje, o tras llevar
-        ``stop_minutes`` dentro del lugar."""
+        """Confirms pending arrivals: with no trip in progress, when the trip ends, or after
+        ``stop_minutes`` inside the place."""
         names = {p.id: p.name for p in places}
         events = []
         for pid, since in sorted(self.pending.items(), key=lambda kv: kv[1]):
@@ -328,7 +328,7 @@ class MemberTracker:
         elif self.away_since is None:
             self.away_since = now
 
-    # ------------------------------------------------------------------ piezas
+    # ------------------------------------------------------------------ pieces
     def _end_trip(self, when: datetime, lat: float, lon: float, place: str | None) -> Event:
         trip = self.trip
         assert trip is not None
@@ -364,9 +364,9 @@ class MemberTracker:
             return 0.0
         kmh = (dist - noise) / seconds * 3.6
         if kmh > MAX_PLAUSIBLE_KMH:
-            return None   # salto de GPS
+            return None   # GPS jump
         if seconds > 600:
-            return None   # demasiado tiempo entre posiciones para decir algo de la velocidad actual
+            return None   # too long between positions to say anything about current speed
         return kmh
 
     def _speeding(self, fix: Fix, speed: float | None, settings: Settings) -> list[Event]:
@@ -411,7 +411,7 @@ class MemberTracker:
             self.distance_today_m = 0.0
             self.trips_today = 0
 
-    # ------------------------------------------------------------------ persistencia
+    # ------------------------------------------------------------------ persistence
     def to_dict(self) -> dict[str, Any]:
         trip = None
         if self.trip is not None:
@@ -461,5 +461,5 @@ class MemberTracker:
             self.battery = data.get("battery")
             self.battery_alerted = bool(data.get("battery_alerted"))
         except (AttributeError, KeyError, TypeError, ValueError):
-            return cls()   # estado guardado dañado: se parte de cero, sin avisos falsos
+            return cls()   # corrupt saved state: start from scratch, without false alerts
         return self

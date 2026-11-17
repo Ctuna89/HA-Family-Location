@@ -1,4 +1,4 @@
-"""Sensores: dónde está cada integrante, si se mueve, a qué velocidad, sus viajes y su batería."""
+"""Sensors: where each member is, whether they move, how fast, their trips and battery."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: FamilyLocationConfigEntr
 
 
 class PlaceSensor(MemberEntity, SensorEntity):
-    """Lugar donde está (o la dirección aproximada, o «fuera»)."""
+    """Place where they are (or the approximate address, or «away»)."""
 
     _attr_icon = "mdi:map-marker-account"
 
@@ -45,7 +45,7 @@ class PlaceSensor(MemberEntity, SensorEntity):
             return name
         if self.tracker.trip is None and (address := self.engine.addresses.get(self.member.id)):
             return address[:255]
-        return AWAY if self.engine.language == "es" else "away"
+        return AWAY[self.engine.language]
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -67,7 +67,7 @@ class PlaceSensor(MemberEntity, SensorEntity):
 
 
 class StatusSensor(MemberEntity, SensorEntity):
-    """Quieto, en movimiento o conduciendo; con el viaje en curso en los atributos."""
+    """Still, moving or driving; the trip in progress in the attributes."""
 
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_options = STATUSES
@@ -85,8 +85,8 @@ class StatusSensor(MemberEntity, SensorEntity):
 
     @property
     def icon(self) -> str:
-        return {"quieto": "mdi:human-handsdown", "en_movimiento": "mdi:walk",
-                "conduciendo": "mdi:car"}.get(self.tracker.status, "mdi:help-circle-outline")
+        return {"still": "mdi:human-handsdown", "moving": "mdi:walk",
+                "driving": "mdi:car"}.get(self.tracker.status, "mdi:help-circle-outline")
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -162,7 +162,7 @@ class DistanceTodaySensor(MemberEntity, SensorEntity):
 
 
 class LastTripSensor(MemberEntity, SensorEntity):
-    """Distancia del último viaje terminado; origen, destino, duración y velocidad máxima en los atributos."""
+    """Distance of the last finished trip; origin, destination, duration and top speed in the attributes."""
 
     _attr_device_class = SensorDeviceClass.DISTANCE
     _attr_native_unit_of_measurement = UnitOfLength.KILOMETERS
@@ -187,7 +187,7 @@ class LastTripSensor(MemberEntity, SensorEntity):
 
 
 class PeopleSensor(PlaceEntity, SensorEntity):
-    """Cuántos integrantes hay en el lugar y quiénes son."""
+    """How many members are at the place and who they are."""
 
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_icon = "mdi:account-group"

@@ -1,4 +1,4 @@
-"""Base de las entidades: un dispositivo por integrante y otro por lugar."""
+"""Entity base classes: one device per member and one per place."""
 
 from __future__ import annotations
 

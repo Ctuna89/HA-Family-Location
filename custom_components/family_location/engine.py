@@ -1,4 +1,4 @@
-"""Motor de Family Location: sigue a los integrantes, detecta eventos y envía los avisos."""
+"""Family Location engine: follows members, detects events and sends alerts."""
 
 from __future__ import annotations
 
@@ -80,7 +80,7 @@ _LOGGER = logging.getLogger(__name__)
 STORAGE_VERSION = 1
 SAVE_DELAY = 30
 TICK = timedelta(seconds=30)
-# Avisos que no se envían a quien va con la persona (ya lo sabe).
+# Alerts not sent to whoever is with the person (they already know).
 COMPANION_EVENTS = {EV_ARRIVE, EV_LEAVE, EV_TRIP_START, EV_TRIP_END}
 
 
@@ -143,12 +143,12 @@ def place_from_subentry(subentry_id: str, title: str, data: dict[str, Any]) -> P
 
 
 def notify_service(name: str) -> str:
-    """«notify.mobile_app_x» o «mobile_app_x» -> «mobile_app_x»."""
+    """«notify.mobile_app_x» or «mobile_app_x» -> «mobile_app_x»."""
     return name.split(".", 1)[1] if name.startswith("notify.") else name
 
 
 class CircleEngine:
-    """Une la configuración, la lógica de cada integrante y Home Assistant."""
+    """Ties together the configuration, each member's logic and Home Assistant."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.hass = hass
@@ -163,7 +163,7 @@ class CircleEngine:
                 elif sub.subentry_type == SUBENTRY_PLACE:
                     self.places[sub.subentry_id] = place_from_subentry(sub.subentry_id, sub.title, dict(sub.data))
             except (KeyError, TypeError, ValueError) as err:
-                _LOGGER.warning("Se ignora «%s», su configuración está incompleta: %s", sub.title, err)
+                _LOGGER.warning("Ignoring «%s», its configuration is incomplete: %s", sub.title, err)
         self.trackers: dict[str, MemberTracker] = {}
         self.addresses: dict[str, str | None] = {}
         self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}")
@@ -174,7 +174,7 @@ class CircleEngine:
         self._pending_sends: set[Callable[[], None]] = set()
         self.language = messages.lang_of(hass.config.language)
 
-    # ------------------------------------------------------------------ ciclo de vida
+    # ------------------------------------------------------------------ lifecycle
     @property
     def signal(self) -> str:
         return SIGNAL_UPDATE.format(self.entry.entry_id)
@@ -211,7 +211,7 @@ class CircleEngine:
         self._store.async_delay_save(self._data_to_store, SAVE_DELAY)
 
     def _index_entities(self) -> None:
-        """Entidades a escuchar por integrante: la persona y el rastreador del que toma la ubicación."""
+        """Entities to listen to per member: the person and the tracker it takes its location from."""
         self._by_entity = {}
         for member in self.members.values():
             entities = {member.entity_id}
@@ -223,13 +223,13 @@ class CircleEngine:
 
     def _person_trackers(self, person_id: str) -> list[str]:
         state = self.hass.states.get(person_id)
-        # La persona ya copia la ubicación de su rastreador; escuchar también el rastreador permite
-        # recibir cambios de velocidad o batería que no mueven a la persona.
+        # The person already copies its tracker's location; listening to the tracker too catches
+        # speed or battery changes that don't move the person.
         if state is not None and state.attributes.get("device_trackers"):
             return list(state.attributes["device_trackers"])
         return []
 
-    # ------------------------------------------------------------------ opciones
+    # ------------------------------------------------------------------ options
     def settings_for(self, member: MemberConfig) -> Settings:
         o = self.options
         return Settings(
@@ -243,7 +243,7 @@ class CircleEngine:
         )
 
     def place_list(self, member_id: str | None = None) -> list[Place]:
-        """Lugares con coordenadas actuales (los ligados a una zona la siguen si cambia)."""
+        """Places with current coordinates (places linked to a zone follow it if it changes)."""
         result = []
         for cfg in self.places.values():
             lat, lon, radius = cfg.latitude, cfg.longitude, cfg.radius
@@ -259,7 +259,7 @@ class CircleEngine:
             result.append(Place(cfg.id, cfg.name, float(lat), float(lon), float(radius), cfg.instant))
         return result
 
-    # ------------------------------------------------------------------ lectura de posición
+    # ------------------------------------------------------------------ reading positions
     def _source_state(self, state: State) -> State | None:
         if state.entity_id.startswith("person."):
             source = state.attributes.get("source")
@@ -267,7 +267,7 @@ class CircleEngine:
         return state
 
     def _battery_entity(self, tracker_id: str) -> str | None:
-        """Sensor de batería del mismo teléfono (app Companion), si existe."""
+        """Battery sensor of the same phone (Companion app), if any."""
         if tracker_id in self._battery_entities:
             return self._battery_entities[tracker_id]
         found = None
@@ -299,7 +299,7 @@ class CircleEngine:
         speed = sattrs.get("speed")
         speed_kmh = None
         if isinstance(speed, (int, float)) and speed >= 0:
-            speed_kmh = float(speed) * 3.6   # la app Companion informa metros por segundo
+            speed_kmh = float(speed) * 3.6   # the Companion app reports meters per second
         battery = sattrs.get("battery_level", sattrs.get("battery"))
         if battery is None and source.entity_id.startswith("device_tracker."):
             if (bat_id := self._battery_entity(source.entity_id)) and (bat := self.hass.states.get(bat_id)):
@@ -315,7 +315,7 @@ class CircleEngine:
             speed_kmh=speed_kmh, battery=battery,
         )
 
-    # ------------------------------------------------------------------ eventos de HA
+    # ------------------------------------------------------------------ HA events
     @callback
     def _on_state(self, event: HaEvent[EventStateChangedData]) -> None:
         for member_id in self._by_entity.get(event.data["entity_id"], []):
@@ -355,7 +355,7 @@ class CircleEngine:
             async_dispatcher_send(self.hass, self.signal)
             self._schedule_save()
 
-    # ------------------------------------------------------------------ direcciones
+    # ------------------------------------------------------------------ addresses
     @callback
     def _maybe_geocode(self, member_id: str) -> None:
         if not self.options.get(CONF_REVERSE_GEOCODE, True) or member_id in self._geocoding:
@@ -365,7 +365,7 @@ class CircleEngine:
             return
         self._geocoding.add(member_id)
         self.entry.async_create_background_task(
-            self.hass, self._geocode(member_id), f"{DOMAIN} dirección {member_id}"
+            self.hass, self._geocode(member_id), f"{DOMAIN} address {member_id}"
         )
 
     async def _geocode(self, member_id: str) -> None:
@@ -381,7 +381,7 @@ class CircleEngine:
         finally:
             self._geocoding.discard(member_id)
 
-    # ------------------------------------------------------------------ avisos
+    # ------------------------------------------------------------------ alerts
     def current_place_name(self, member_id: str) -> str | None:
         ids = self.trackers[member_id].current_place_ids() if member_id in self.trackers else []
         return self.places[ids[0]].name if ids and ids[0] in self.places else None
@@ -392,7 +392,7 @@ class CircleEngine:
         return [m for m in pool if m.receive_alerts and m.notify and (notify_self or m.id != subject.id)]
 
     def _wants(self, member: MemberConfig, event: Event) -> tuple[bool, list[str]]:
-        """¿Se avisa este evento? y a quiénes (ids; vacío = todos)."""
+        """Is this event announced? And to whom (ids; empty = everyone)."""
         o = self.options
         if event.type in (EV_ARRIVE, EV_LEAVE):
             place = self.places.get(event.place_id or "")
@@ -409,7 +409,7 @@ class CircleEngine:
             return bool(o.get(CONF_NOTIFY_SPEEDING, True)), safety
         if event.type == EV_LOW_BATTERY:
             return bool(o.get(CONF_NOTIFY_BATTERY, True)), safety
-        return True, []   # check-in y SOS van a todos
+        return True, []   # check-in and SOS go to everyone
 
     @callback
     def _handle(self, member: MemberConfig, events: list[Event]) -> None:
@@ -441,7 +441,7 @@ class CircleEngine:
 
     def _send_later(self, member: MemberConfig, chosen: list[str], event: Event, title: str, message: str,
                     point: tuple[float, float] | None) -> None:
-        """Espera un poco antes de avisar, para saber quién iba con la persona y no avisarle a esa gente."""
+        """Waits a bit before alerting, to learn who was with the person and skip them."""
         cancel: Callable[[], None] | None = None
 
         @callback
@@ -454,7 +454,7 @@ class CircleEngine:
         self._pending_sends.add(cancel)
 
     def together(self, other_id: str, subject_id: str, event: Event) -> bool:
-        """¿«other» estaba con «subject» en este evento? (llegaron, salieron o viajan juntos)."""
+        """Was «other» with «subject» for this event? (arrived, left or travel together)."""
         other, subject = self.trackers.get(other_id), self.trackers.get(subject_id)
         if other is None or subject is None or other.last_fix is None or subject.last_fix is None:
             return False
@@ -466,7 +466,7 @@ class CircleEngine:
         near = (abs(a.time - b.time) <= window
                 and distance_m(a.lat, a.lon, b.lat, b.lon) <= TOGETHER_M + (a.accuracy or 0) + (b.accuracy or 0))
         if event.type == EV_LEAVE and event.place_id:
-            # Salieron juntos: el otro tampoco está ya en el lugar y anda cerca.
+            # Left together: the other one is no longer at the place either and is nearby.
             return near and event.place_id not in other.places
         if event.type == EV_TRIP_START:
             return near and other.trip is not None
@@ -492,11 +492,11 @@ class CircleEngine:
             for service in target.notify:
                 svc = notify_service(service)
                 if not self.hass.services.has_service("notify", svc):
-                    _LOGGER.warning("El servicio de notificación notify.%s de %s no existe", svc, target.name)
+                    _LOGGER.warning("Notification service notify.%s for %s does not exist", svc, target.name)
                     continue
                 self.hass.async_create_task(
                     self._call_notify(svc, {"title": title, "message": message, "data": data}),
-                    f"{DOMAIN} aviso {svc}",
+                    f"{DOMAIN} alert {svc}",
                 )
                 sent += 1
         return sent
@@ -504,10 +504,10 @@ class CircleEngine:
     async def _call_notify(self, service: str, data: dict[str, Any]) -> None:
         try:
             await self.hass.services.async_call("notify", service, data, blocking=True)
-        except Exception as err:  # noqa: BLE001 - un teléfono que falla no debe afectar al resto
-            _LOGGER.warning("No se pudo enviar el aviso por notify.%s: %s", service, err)
+        except Exception as err:  # noqa: BLE001 - one failing phone must not affect the rest
+            _LOGGER.warning("Could not send the alert through notify.%s: %s", service, err)
 
-    # ------------------------------------------------------------------ acciones manuales
+    # ------------------------------------------------------------------ manual actions
     async def async_check_in(self, member_id: str, note: str = "", sos: bool = False) -> None:
         member = self.members[member_id]
         tracker = self.trackers[member_id]

@@ -1,4 +1,4 @@
-"""Pruebas dentro de Home Assistant (requieren pytest-homeassistant-custom-component)."""
+"""Tests inside Home Assistant (require pytest-homeassistant-custom-component)."""
 
 from unittest.mock import patch
 
@@ -49,7 +49,7 @@ def member(entity, title, notify, speed_limit=0):
 
 
 async def advance(hass, freezer, seconds):
-    """Avanza el reloj de a 30 s (como el chequeo periódico de la integración)."""
+    """Moves the clock forward 30 s at a time (like the integration's periodic check)."""
     for _ in range(int(seconds // 30)):
         freezer.tick(timedelta(seconds=30))
         async_fire_time_changed(hass, dt_util.utcnow())
@@ -94,12 +94,12 @@ async def test_arrive_leave_speeding_and_entities(hass: HomeAssistant, freezer):
     with patch("custom_components.family_location.engine.geocode.reverse", return_value="Av. Siempre Viva 742"):
         await setup_circle(hass)
         assert hass.states.get("sensor.jaime_lugar").state == "Casa"
-        assert hass.states.get("sensor.jaime_estado").state == "quieto"
+        assert hass.states.get("sensor.jaime_estado").state == "still"
         assert hass.states.get("binary_sensor.casa_hay_alguien").state == "on"
         assert hass.states.get("sensor.casa_personas").state == "2"
         assert hass.states.get("sensor.jaime_bateria_del_telefono").state == "80"
 
-        # Jaime sale de casa y va al trabajo; en la mitad va a 130 km/h dos veces.
+        # Jaime leaves home for work; halfway he goes 130 km/h twice.
         for i, speed in enumerate([40, 130, 132, 50, 40], start=1):
             f = i / 5
             freezer.tick(timedelta(seconds=60))
@@ -110,15 +110,15 @@ async def test_arrive_leave_speeding_and_entities(hass: HomeAssistant, freezer):
         tracker(hass, "device_tracker.jaime", *WORK, speed=0)
         await hass.async_block_till_done()
         await advance(hass, freezer, 120)
-        assert hass.states.get("sensor.jaime_lugar").state != "Trabajo"   # aún no se confirma
-        await advance(hass, freezer, 400)   # 5 minutos detenido
+        assert hass.states.get("sensor.jaime_lugar").state != "Trabajo"   # not confirmed yet
+        await advance(hass, freezer, 400)   # 5 minutes stopped
     kinds = [e["type"] for e in events]
     assert kinds == ["leave", "trip_start", "speeding", "arrive", "trip_end"]
     titles = [c.data["title"] for c in jeanette_calls]
-    # el exceso se avisa al tiro; llegadas y salidas esperan 90 s por si alguien iba acompañándolo
+    # speeding is alerted right away; arrivals and departures wait 90 s in case someone was with him
     assert titles == ["⚠️ Exceso de velocidad: Jaime", "🚶 Jaime salió de Casa", "📍 Jaime llegó a Trabajo"]
     assert "maps" in jeanette_calls[0].data["data"]["url"]
-    assert jaime_calls == []   # no se avisa a uno mismo
+    assert jaime_calls == []   # nobody is alerted about themselves
     assert hass.states.get("sensor.jaime_lugar").state == "Trabajo"
     last = hass.states.get("sensor.jaime_ultimo_viaje")
     assert last.attributes["from"] == "Casa" and last.attributes["to"] == "Trabajo"
@@ -253,7 +253,7 @@ async def test_place_reconfigure_keeps_location(hass: HomeAssistant):
 
 
 async def test_no_alert_to_who_travels_together(hass: HomeAssistant, freezer):
-    """Jaime y Jeanette van juntos de Casa al Trabajo: no se avisan entre ellos; Tomás (en casa) sí recibe."""
+    """Jaime and Jeanette travel together from Home to Work: no alerts between them; Tomás (at home) gets them."""
     hass.config.language = "es"
     jaime = capture_notify(hass, "mobile_app_jaime")
     jeanette = capture_notify(hass, "mobile_app_jeanette")
@@ -291,8 +291,8 @@ async def test_alert_when_not_together(hass: HomeAssistant, freezer):
     tracker(hass, "device_tracker.jaime", *HOME)
     tracker(hass, "device_tracker.jeanette", *HOME)
     await setup_circle(hass, speed_limit=0)
-    tracker(hass, "device_tracker.jaime", HOME[0] + 0.01, HOME[1], speed=40)   # Jaime sale solo
+    tracker(hass, "device_tracker.jaime", HOME[0] + 0.01, HOME[1], speed=40)   # Jaime leaves alone
     await hass.async_block_till_done()
-    assert jeanette == []          # se espera un poco por si iba acompañado
+    assert jeanette == []          # waits a bit in case he was accompanied
     await advance(hass, freezer, 120)
     assert [c.data["title"] for c in jeanette] == ["🚶 Jaime salió de Casa"]

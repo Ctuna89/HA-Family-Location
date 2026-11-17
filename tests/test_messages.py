@@ -18,3 +18,11 @@ def test_trip_end_es():
 def test_speeding_en():
     title, msg = messages.build("speeding", "en", "Jaime", datetime(2026, 1, 1), data={"speed_kmh": 132, "limit_kmh": 120})
     assert "132 km/h" in msg and "120" in msg and title.startswith("⚠️")
+
+
+def test_language_defaults_to_english():
+    assert messages.lang_of("es") == "es"
+    assert messages.lang_of("es-419") == "es"
+    assert messages.lang_of("en") == "en"
+    assert messages.lang_of("de") == "en"
+    assert messages.lang_of(None) == "en"

@@ -1,9 +1,9 @@
-"""Asistente de configuración de Family Location.
+"""Family Location configuration flow.
 
-- La entrada principal es el «círculo» (p. ej. «Familia»). Al crearlo se pueden elegir las personas de Home
-  Assistant que lo forman y se agrega «Casa» como primer lugar.
-- Cada integrante y cada lugar es una subentrada: se agregan, editan y borran desde la página de la
-  integración con «Añadir integrante» y «Añadir lugar».
+- The main entry is the «circle» (e.g. «Family»). When creating it you can pick the Home Assistant persons
+  in it, and «Home» is added as the first place.
+- Each member and each place is a subentry: they are added, edited and removed from the integration page
+  with «Add member» and «Add place».
 """
 
 from __future__ import annotations
@@ -71,14 +71,14 @@ CONF_ADD_HOME = "add_home"
 SKIP_NOTIFY = {"send_message", "persistent_notification", "notify"}
 
 
-# ---------------------------------------------------------------------- ayudas
+# ---------------------------------------------------------------------- helpers
 def notify_services(hass: HomeAssistant) -> list[str]:
     services = hass.services.async_services_for_domain("notify")
     return sorted(f"notify.{name}" for name in services if name not in SKIP_NOTIFY)
 
 
 def detect_notify(hass: HomeAssistant, entity_id: str) -> list[str]:
-    """Servicio notify.mobile_app_* del teléfono de una persona o rastreador, si se puede deducir."""
+    """notify.mobile_app_* service of a person's or tracker's phone, when it can be inferred."""
     trackers = [entity_id]
     if entity_id.startswith("person."):
         state = hass.states.get(entity_id)
@@ -133,9 +133,9 @@ def _multi_select(options: list[Any], custom: bool = False) -> selector.SelectSe
         options=options, multiple=True, custom_value=custom, mode=selector.SelectSelectorMode.DROPDOWN))
 
 
-# ---------------------------------------------------------------------- círculo
+# ---------------------------------------------------------------------- circle
 class FamilyLocationConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Crea un círculo."""
+    """Creates a circle."""
 
     VERSION = 1
 
@@ -145,7 +145,7 @@ class FamilyLocationConfigFlow(ConfigFlow, domain=DOMAIN):
             if user_input.get(CONF_ADD_HOME) and self.hass.states.get("zone.home") is not None:
                 subentries.append(ConfigSubentryData(
                     subentry_type=SUBENTRY_PLACE,
-                    title="Casa" if not self.hass.config.language.startswith("en") else "Home",
+                    title="Casa" if self.hass.config.language.startswith("es") else "Home",
                     data={CONF_ZONE: "zone.home", CONF_NOTIFY_ARRIVE: True, CONF_NOTIFY_LEAVE: True, CONF_INSTANT: True,
                           CONF_WATCH: [], CONF_RECIPIENTS: []},
                     unique_id=None,
@@ -154,8 +154,9 @@ class FamilyLocationConfigFlow(ConfigFlow, domain=DOMAIN):
                                            subentries=subentries)
 
         persons = sorted(self.hass.states.async_entity_ids("person"))
+        spanish = (self.hass.config.language or "").startswith("es")
         schema = vol.Schema({
-            vol.Required(CONF_NAME, default="Familia"): selector.TextSelector(),
+            vol.Required(CONF_NAME, default="Familia" if spanish else "Family"): selector.TextSelector(),
             vol.Optional(CONF_MEMBERS, default=persons): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["person", "device_tracker"], multiple=True)),
             vol.Optional(CONF_ADD_HOME, default=True): selector.BooleanSelector(),
@@ -191,7 +192,7 @@ def default_options() -> dict[str, Any]:
 
 
 class FamilyLocationOptionsFlow(OptionsFlow):
-    """Avisos generales y sensibilidad de la detección de viajes."""
+    """General alerts and trip detection sensitivity."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
@@ -217,9 +218,9 @@ class FamilyLocationOptionsFlow(OptionsFlow):
         return self.async_show_form(step_id="init", data_schema=vol.Schema(fields))
 
 
-# ---------------------------------------------------------------------- integrante
+# ---------------------------------------------------------------------- member
 class MemberSubentryFlow(ConfigSubentryFlow):
-    """Agrega o edita un integrante."""
+    """Adds or edits a member."""
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         return await self._form(user_input, None)
@@ -270,9 +271,9 @@ def _default(value: Any) -> dict[str, Any]:
     return {"default": value} if value not in (None, "") else {}
 
 
-# ---------------------------------------------------------------------- lugar
+# ---------------------------------------------------------------------- place
 class PlaceSubentryFlow(ConfigSubentryFlow):
-    """Agrega o edita un lugar: por dirección, en el mapa o a partir de una zona de Home Assistant."""
+    """Adds or edits a place: by address, on the map or from a Home Assistant zone."""
 
     def __init__(self) -> None:
         self._data: dict[str, Any] = {}
@@ -336,7 +337,7 @@ class PlaceSubentryFlow(ConfigSubentryFlow):
         return self.async_show_form(step_id=step_id, data_schema=schema, errors=errors)
 
     async def async_step_location(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
-        """Muestra el mapa para confirmar o corregir el punto y el radio."""
+        """Shows the map to confirm or adjust the point and radius."""
         if user_input is not None:
             loc = user_input[CONF_LOCATION]
             self._data[CONF_LOCATION] = {
@@ -354,7 +355,7 @@ class PlaceSubentryFlow(ConfigSubentryFlow):
         )
 
     async def async_step_alerts(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
-        """Quién se vigila en este lugar y quién recibe los avisos."""
+        """Who is watched at this place and who receives the alerts."""
         entry = self._get_entry()
         members = member_options(entry)
         valid = {m["value"] for m in members}

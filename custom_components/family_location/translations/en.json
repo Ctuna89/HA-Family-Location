@@ -159,10 +159,10 @@
       "status": {
         "name": "Status",
         "state": {
-          "quieto": "Still",
-          "en_movimiento": "Moving",
-          "conduciendo": "Driving",
-          "desconocido": "Unknown"
+          "still": "Still",
+          "moving": "Moving",
+          "driving": "Driving",
+          "unknown": "Unknown"
         }
       },
       "speed": {

@@ -1,10 +1,10 @@
-"""Búsqueda de direcciones con OpenStreetMap (Nominatim), sin claves de API.
+"""Address lookup with OpenStreetMap (Nominatim), no API keys.
 
-Solo se usa para:
-- convertir la dirección que escribes al crear un lugar en coordenadas, y
-- (opcional) mostrar la dirección aproximada de un integrante cuando está detenido fuera de sus lugares.
+Only used to:
+- turn the address you type when creating a place into coordinates, and
+- (optionally) show the approximate address of a member who is stopped away from their places.
 
-Nominatim pide como máximo una consulta por segundo y un User-Agent que identifique la aplicación.
+Nominatim asks for at most one request per second and a User-Agent that identifies the application.
 """
 
 from __future__ import annotations
@@ -55,16 +55,16 @@ async def _get(session: aiohttp.ClientSession, path: str, params: dict[str, Any]
 
 async def geocode(session: aiohttp.ClientSession, address: str, language: str = "es",
                   near: tuple[float, float] | None = None) -> GeoResult | None:
-    """Coordenadas de una dirección, o None si no se encuentra o falla la consulta."""
+    """Coordinates of an address, or None if not found or the request fails."""
     params: dict[str, Any] = {"q": address, "limit": 1, "addressdetails": 0}
     if near is not None:
         lat, lon = near
-        # Preferir resultados cerca de la casa (sin excluir los demás).
+        # Prefer results near home (without excluding others).
         params["viewbox"] = f"{lon - 1.5},{lat + 1.5},{lon + 1.5},{lat - 1.5}"
     try:
         data = await _get(session, "search", params, language)
     except (aiohttp.ClientError, TimeoutError, ValueError) as err:
-        _LOGGER.warning("No se pudo buscar la dirección «%s»: %s", address, err)
+        _LOGGER.warning("Could not look up the address «%s»: %s", address, err)
         return None
     if not data:
         return None
@@ -76,7 +76,7 @@ async def geocode(session: aiohttp.ClientSession, address: str, language: str = 
 
 
 def short_address(item: dict[str, Any]) -> str | None:
-    """Dirección corta y legible («Av. Providencia 1234, Providencia») a partir de la respuesta de Nominatim."""
+    """Short readable address («Av. Providencia 1234, Providencia») from a Nominatim response."""
     addr = item.get("address") or {}
     street = addr.get("road") or addr.get("pedestrian") or addr.get("footway") or addr.get("path")
     number = addr.get("house_number")
@@ -92,12 +92,12 @@ def short_address(item: dict[str, Any]) -> str | None:
 
 
 async def reverse(session: aiohttp.ClientSession, lat: float, lon: float, language: str = "es") -> str | None:
-    """Dirección aproximada de unas coordenadas."""
+    """Approximate address of some coordinates."""
     try:
         data = await _get(session, "reverse", {"lat": f"{lat:.6f}", "lon": f"{lon:.6f}", "zoom": 18,
                                                "addressdetails": 1}, language)
     except (aiohttp.ClientError, TimeoutError, ValueError) as err:
-        _LOGGER.debug("No se pudo obtener la dirección de %s,%s: %s", lat, lon, err)
+        _LOGGER.debug("Could not get the address of %s,%s: %s", lat, lon, err)
         return None
     if not isinstance(data, dict) or "error" in data:
         return None

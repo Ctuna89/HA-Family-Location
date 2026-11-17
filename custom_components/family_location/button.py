@@ -1,4 +1,4 @@
-"""Botones por integrante: «Check-in» (avisar dónde estoy) y «Pedir ayuda» (SOS)."""
+"""Per-member buttons: «Check in» (tell everyone where I am) and «Ask for help» (SOS)."""
 
 from __future__ import annotations
 

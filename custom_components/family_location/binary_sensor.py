@@ -1,4 +1,4 @@
-"""Sensores binarios: en movimiento, exceso de velocidad y «hay alguien» en cada lugar."""
+"""Binary sensors: moving, speeding and «occupied» for each place."""
 
 from __future__ import annotations
 

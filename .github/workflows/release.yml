@@ -1,7 +1,7 @@
 name: Release
 
-# Publica una release de GitHub cuando la versión del manifest no tiene todavía su
-# etiqueta. HACS solo ofrece versiones que existan como release.
+# Publishes a GitHub release when the manifest version has no tag yet.
+# HACS only offers versions that exist as releases.
 on:
   push:
     branches: [main]
@@ -19,19 +19,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Leer versión del manifest
+      - name: Read manifest version
         id: version
         run: |
           version=$(python3 -c "import json; print(json.load(open('custom_components/family_location/manifest.json'))['version'])")
           echo "tag=v${version}" >> "$GITHUB_OUTPUT"
 
-      - name: Crear release si no existe
+      - name: Create release if missing
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
         run: |
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "La release $TAG ya existe; no se hace nada."
+            echo "Release $TAG already exists; nothing to do."
           else
             gh release create "$TAG" --target "$GITHUB_SHA" --title "Family Location ${TAG#v}" --generate-notes
           fi

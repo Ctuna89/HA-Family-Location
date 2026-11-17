@@ -1,4 +1,4 @@
-"""Textos de las notificaciones (español e inglés)."""
+"""Notification texts (Spanish and English)."""
 
 from __future__ import annotations
 
@@ -48,7 +48,8 @@ WORDS = {
 
 
 def lang_of(language: str | None) -> str:
-    return "es" if not language or not language.lower().startswith("en") else "en"
+    """Spanish for Spanish installs; English for everything else."""
+    return "es" if language and language.lower().startswith("es") else "en"
 
 
 def _duration(minutes: float) -> str:
@@ -74,7 +75,7 @@ def where_text(lang: str, place: str | None, address: str | None) -> str:
 
 def build(event_type: str, lang: str, name: str, when: datetime, place: str | None = None,
           data: dict[str, Any] | None = None, where: str = "", note: str = "") -> tuple[str, str]:
-    """Título y mensaje de una notificación."""
+    """Title and message of a notification."""
     data = data or {}
     w = WORDS[lang]
     origin, dest = data.get("from"), data.get("to")

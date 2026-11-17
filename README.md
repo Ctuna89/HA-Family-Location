@@ -1,101 +1,104 @@
 # Family Location 📍
 
-**Un reemplazo de Life360 que vive dentro de tu Home Assistant.** Lugares por dirección, avisos de llegada y
-salida para toda la familia («Jaime llegó a casa», «Jeanette llegó al trabajo»), quién está en movimiento,
-viajes con distancia y velocidad máxima, avisos de exceso de velocidad, batería baja, check-in y botón de ayuda.
+🇪🇸 [Leer en español](README.es.md)
 
-Sin cuentas, sin suscripción y sin que tu ubicación pase por servidores de terceros: la posición la entrega la
-**app de Home Assistant** (Companion) del celular de cada uno, y todo se calcula en tu Home Assistant.
+**A Life360 replacement that lives inside your Home Assistant.** Places by address, arrival and departure
+alerts for the whole family («Jaime arrived home», «Jeanette arrived at work»), who is on the move, trips with
+distance and top speed, speeding alerts, low battery, check-in and an SOS button.
 
-## Qué incluye
+No accounts, no subscription, and your location never goes through third-party servers: positions come from
+the **Home Assistant Companion app** on each phone, and everything is computed in your Home Assistant.
+
+[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Ctuna89&repository=HA-Family-Location&category=integration)
+
+## Features
 
 | | |
 |---|---|
-| 🏠 **Lugares por dirección** | Escribes «Av. Apoquindo 3000, Las Condes», se busca en OpenStreetMap, confirmas el punto en el mapa y ajustas el radio. También puedes marcarlo directo en el mapa o usar una zona que ya tengas |
-| 🔔 **Llegadas y salidas** | Aviso al resto del círculo cuando alguien llega o sale de un lugar. Por lugar eliges si se avisa al llegar, al salir, de quién (p. ej. solo los niños en el colegio) y a quién |
-| 🚦 **Sin falsas llegadas** | Un viaje termina recién tras 5 minutos quieto (configurable): un semáforo o un taco no lo cortan. Y la llegada a un lugar que no sea Casa se avisa solo cuando la persona se queda ahí esos 5 minutos; pasar por al lado o parar en un semáforo frente al trabajo no cuenta |
-| 👨‍👩‍👧 **Si van juntos, no se avisan** | Si Jaime va con Jeanette, a Jeanette no le llega «Jaime llegó al Trabajo» (ni la salida ni el viaje): solo al resto del círculo |
-| 🚗 **En movimiento** | Estado *Quieto / En movimiento / Conduciendo*, velocidad actual, sensor binario «En movimiento» |
-| 🛣️ **Viajes** | Inicio y fin automáticos, distancia, duración, velocidad máxima, origen y destino. Distancia y viajes del día |
-| ⚠️ **Exceso de velocidad** | Límite por persona (p. ej. 100 km/h para el hijo que recién maneja). Se confirma con dos lecturas seguidas para evitar falsos avisos por saltos del GPS |
-| 🔋 **Batería baja** | Aviso al círculo cuando el teléfono de alguien baja del umbral |
-| ✅ **Check-in** | Botón (y acción) que avisa a todos «Jaime está en Casa» o «cerca de Av. Matta 100» |
-| 🆘 **Pedir ayuda** | Botón que envía una alerta **crítica** (suena aunque el teléfono esté en silencio) con un enlace a la ubicación |
-| 📫 **Dirección aproximada** | Opcional: cuando alguien está detenido fuera de sus lugares se muestra la dirección |
-| 🤖 **Eventos para automatizar** | Cada llegada, salida, viaje, exceso, batería, check-in y SOS genera el evento `family_location_event` |
+| 🏠 **Places by address** | Type «1600 Amphitheatre Pkwy, Mountain View», it is looked up on OpenStreetMap, you confirm the point on a map and adjust the radius. You can also drop a pin on the map or reuse an existing zone |
+| 🔔 **Arrivals and departures** | The rest of the circle is alerted when someone arrives at or leaves a place. Per place you choose whether to alert on arrival, on departure, for whom (e.g. only the kids at school) and to whom |
+| 🚦 **No false arrivals** | A trip only ends after 5 minutes without moving (configurable): a traffic light or a jam doesn't end it. Arrivals at places other than Home are announced only once the person stays there for those 5 minutes; driving past, or stopping at a light in front of work, doesn't count |
+| 👨‍👩‍👧 **Together? No alert** | If Jaime is with Jeanette, Jeanette doesn't get «Jaime arrived at Work» (nor the departure or the trip): only the rest of the circle does |
+| 🚗 **On the move** | *Still / Moving / Driving* status, current speed, and a «Moving» binary sensor |
+| 🛣️ **Trips** | Automatic start and end, distance, duration, top speed, origin and destination. Distance and trips today |
+| ⚠️ **Speeding** | Per-person limit (e.g. 100 km/h for the new teen driver). Confirmed by two consecutive readings to avoid false alerts from GPS jumps |
+| 🔋 **Low battery** | The circle is alerted when someone's phone drops below the threshold |
+| ✅ **Check-in** | A button (and action) that tells everyone «Jaime is at Home» or «near 742 Evergreen Terrace» |
+| 🆘 **Ask for help** | A button that sends a **critical** alert (rings even on silent) with a link to the location |
+| 📫 **Approximate address** | Optional: when someone is stopped away from their places, their address is shown |
+| 🤖 **Events for automations** | Every arrival, departure, trip, speeding, battery, check-in and SOS fires the `family_location_event` event |
+| 🌍 **Languages** | English and Spanish (notifications follow your Home Assistant language) |
 
-## Requisitos
+## Requirements
 
-1. **Home Assistant 2025.3 o superior.**
-2. La **app de Home Assistant** instalada en el teléfono de cada integrante, con la ubicación en **«Permitir
-   siempre»** y una **persona** de Home Assistant asociada a ese teléfono.
-3. Para avisos de velocidad útiles, el teléfono debe informar la ubicación seguido mientras se mueve:
-   - **Android:** *Ajustes de la app → Sensores → Ubicación en segundo plano* activado; idealmente activa el
-     *Modo de alta precisión* (puedes limitarlo a cuando el teléfono está conectado al auto por Bluetooth o
-     Android Auto).
-   - **iPhone:** iOS informa por cambios significativos de ubicación; las velocidades se calculan entre posiciones,
-     así que en iPhone el aviso de velocidad es menos inmediato.
+1. **Home Assistant 2025.3 or newer.**
+2. The **Home Assistant Companion app** on each member's phone, with location set to **«Allow all the time»**, and
+   a Home Assistant **person** linked to that phone.
+3. For useful speeding alerts the phone has to report its location often while moving:
+   - **Android:** *App settings → Sensors → Background location* enabled; ideally turn on *High accuracy
+     mode* (you can limit it to when the phone is connected to the car via Bluetooth or Android Auto).
+   - **iPhone:** iOS reports on significant location changes; speeds are computed between positions, so on
+     iPhone speeding alerts are less immediate.
 
-## Instalación
+## Installation
 
-[![Añadir a HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Ctuna89&repository=HA-Family-Location&category=integration)
+1. HACS → ⋮ menu → *Custom repositories* → add `https://github.com/Ctuna89/HA-Family-Location` as an
+   **Integration** (or use the button above).
+2. Install **Family Location** and restart Home Assistant.
+3. *Settings → Devices & services → Add integration → Family Location.*
 
-1. HACS → menú ⋮ → *Repositorios personalizados* → agrega este repositorio como **Integración**.
-2. Instala **Family Location** y reinicia Home Assistant.
-3. *Ajustes → Dispositivos y servicios → Añadir integración → Family Location.*
+## Configuration
 
-## Configuración
+1. **Create the circle:** name («Family»), who is in it (each person's phone notification service is detected
+   automatically) and whether to add «Home» as the first place.
+2. **Add places:** on the integration page, **«Add place»** button:
+   1. name and address (or an existing zone, or nothing to drop a pin on the map);
+   2. confirm the point and radius on the map;
+   3. choose the alerts: on arrival / on departure, for whom and to whom, and whether to alert as soon as
+      someone enters.
+3. **Add or edit members:** **«Add member»** button, or the pencil next to each one. There you set their speed
+   limit (0 = no alert), which phone(s) receive their alerts and whether they receive alerts at all.
+4. **General options** (*Configure* button): which safety alerts are sent and to whom, battery threshold, and
+   trip detection sensitivity.
 
-1. **Crear el círculo:** nombre («Familia»), quiénes lo forman (se detecta sola la notificación del celular de
-   cada persona) y si se agrega «Casa» como primer lugar.
-2. **Añadir lugares:** en la página de la integración, botón **«Añadir lugar»**:
-   1. nombre y dirección (o una zona existente, o nada para marcarlo en el mapa);
-   2. confirmas el punto y el radio en el mapa;
-   3. eliges los avisos: al llegar / al salir, de quiénes y a quiénes.
-3. **Añadir o editar integrantes:** botón **«Añadir integrante»**, o el lápiz junto a cada uno. Ahí defines su
-   límite de velocidad (0 = sin aviso), a qué celular(es) se le envían los avisos y si los recibe.
-4. **Opciones generales** (botón *Configurar*): qué avisos de seguridad se envían y a quién, umbral de batería,
-   y la sensibilidad de la detección de viajes.
+Nobody receives alerts about themselves (configurable in the options).
 
-Nadie recibe sus propios avisos (se puede cambiar en las opciones).
+### When alerts are sent
 
-### Cómo decide cuándo avisar
+- **Home** announces arrivals as soon as someone enters. For other places the *«Alert as soon as they enter»*
+  option is off: the arrival is confirmed after the person stays stopped there for the configured minutes
+  (5 by default), and the alert shows the time they entered. You can turn it on per place.
+- **Trips** start when someone moves more than 250 m from where they were or goes faster than 8 km/h, and only
+  end after 5 minutes without moving. Stopping 2–3 minutes at a traffic light or in a jam doesn't end the trip.
+- **Companions:** arrival, departure and trip alerts wait 90 seconds. If during that time another member is with
+  the person (arrived at the same place less than 10 minutes apart, or left together and is within ~300 m),
+  that member doesn't get the alert. Speeding, low battery, check-in and SOS are always sent right away.
 
-- **Casa** avisa la llegada apenas entras (para que la familia sepa al tiro). En los demás lugares la opción
-  *«Avisar apenas entra»* viene apagada: la llegada se confirma tras quedarte detenido ahí los minutos
-  configurados (5 por defecto) y el aviso dice la hora en que entraste. Puedes activarla por lugar.
-- **Viajes:** empiezan al moverte más de 250 m desde donde estabas o al superar 8 km/h, y terminan solo tras
-  5 minutos sin moverte. Detenerte 2–3 minutos en un semáforo o un taco no corta el viaje.
-- **Acompañantes:** los avisos de llegada, salida y viaje esperan 90 segundos. Si en ese tiempo otro integrante
-  está con la persona (llegó al mismo lugar con menos de 10 minutos de diferencia, o salieron juntos y están a
-  menos de ~300 m), a ese integrante no se le envía el aviso. El exceso de velocidad, la batería baja, el
-  check-in y el pedido de ayuda se avisan siempre y al instante.
+## Entities
 
-## Entidades
+Per member (a device with their name; entity IDs depend on your Home Assistant language, English shown):
 
-Por cada integrante (dispositivo con su nombre):
-
-| Entidad | Qué muestra |
+| Entity | What it shows |
 |---|---|
-| `sensor.<nombre>_lugar` | Lugar donde está, o su dirección aproximada, o «fuera». Atributos: desde cuándo, coordenadas, precisión, última vez visto |
-| `sensor.<nombre>_estado` | quieto · en_movimiento · conduciendo. Durante un viaje: distancia, duración y velocidad máxima hasta ahora |
-| `sensor.<nombre>_velocidad` | km/h |
-| `binary_sensor.<nombre>_en_movimiento` | Encendido mientras hay un viaje en curso |
-| `binary_sensor.<nombre>_exceso_de_velocidad` | Solo si tiene límite configurado |
-| `sensor.<nombre>_distancia_hoy` | km recorridos hoy y número de viajes |
-| `sensor.<nombre>_ultimo_viaje` | km del último viaje; origen, destino, horas, duración y velocidad máxima en atributos |
-| `sensor.<nombre>_bateria_del_telefono` | % de batería |
-| `button.<nombre>_check_in` / `button.<nombre>_pedir_ayuda` | Avisan al círculo |
+| `sensor.<name>_place` | Place where they are, or their approximate address, or «away». Attributes: since when, coordinates, accuracy, last seen |
+| `sensor.<name>_status` | `still` · `moving` · `driving`. During a trip: distance, duration and top speed so far |
+| `sensor.<name>_speed` | km/h |
+| `binary_sensor.<name>_moving` | On while a trip is in progress |
+| `binary_sensor.<name>_speeding` | Only if they have a speed limit |
+| `sensor.<name>_distance_today` | km travelled today and number of trips |
+| `sensor.<name>_last_trip` | km of the last trip; origin, destination, times, duration and top speed in attributes |
+| `sensor.<name>_phone_battery` | Battery % |
+| `button.<name>_check_in` / `button.<name>_ask_for_help` | Alert the circle |
 
-Por cada lugar: `sensor.<lugar>_personas` (cuántos y quiénes) y `binary_sensor.<lugar>_hay_alguien`.
+Per place: `sensor.<place>_people` (how many and who) and `binary_sensor.<place>_occupied`.
 
-## Acciones
+## Actions
 
 ```yaml
 action: family_location.check_in
 data:
   entity_id: person.jaime
-  message: "Pasé a comprar pan"
+  message: "Grabbing some bread"
 ```
 
 ```yaml
@@ -104,7 +107,7 @@ data:
   entity_id: person.jeanette
 ```
 
-## Automatizaciones con el evento
+## Automations with the event
 
 ```yaml
 triggers:
@@ -112,17 +115,17 @@ triggers:
     event_type: family_location_event
     event_data:
       type: arrive
-      place: Colegio
+      place: School
 actions:
   - action: light.turn_on
     target:
-      entity_id: light.entrada
+      entity_id: light.porch
 ```
 
-Tipos: `arrive`, `leave`, `trip_start`, `trip_end`, `speeding`, `low_battery`, `check_in`, `sos`. El evento trae
-`member`, `entity_id`, `place`, `latitude`, `longitude` y los datos del viaje o la velocidad.
+Types: `arrive`, `leave`, `trip_start`, `trip_end`, `speeding`, `low_battery`, `check_in`, `sos`. The event
+includes `member`, `entity_id`, `place`, `latitude`, `longitude` and the trip or speed data.
 
-## Tarjeta de ejemplo
+## Example card
 
 ```yaml
 type: vertical-stack
@@ -134,33 +137,42 @@ cards:
     hours_to_show: 12
   - type: entities
     entities:
-      - sensor.jaime_lugar
-      - sensor.jaime_estado
-      - sensor.jaime_velocidad
-      - sensor.jaime_ultimo_viaje
-      - sensor.jeanette_lugar
-      - sensor.jeanette_estado
+      - sensor.jaime_place
+      - sensor.jaime_status
+      - sensor.jaime_speed
+      - sensor.jaime_last_trip
+      - sensor.jeanette_place
+      - sensor.jeanette_status
   - type: horizontal-stack
     cards:
       - type: button
         entity: button.jaime_check_in
         tap_action: {action: toggle}
       - type: button
-        entity: button.jaime_pedir_ayuda
+        entity: button.jaime_ask_for_help
         hold_action: {action: toggle}
         tap_action: {action: none}
 ```
 
-El historial de recorridos lo guarda Home Assistant: la tarjeta de mapa con `hours_to_show` muestra la ruta.
+Home Assistant keeps the location history: the map card with `hours_to_show` shows the route.
 
-## Privacidad
+## Privacy
 
-- La ubicación se queda en tu Home Assistant.
-- Solo se consulta OpenStreetMap (Nominatim) para buscar la dirección de un lugar al crearlo y, si la opción
-  está activada, para mostrar la dirección de alguien detenido fuera de sus lugares. Puedes desactivarla.
+- Your location stays in your Home Assistant.
+- OpenStreetMap (Nominatim) is only queried to look up a place's address when you create it and, if the option
+  is on, to show the address of someone stopped away from their places. You can turn it off.
 
-## Lo que no hace (todavía)
+## Not supported (yet)
 
-- Detección de choques: requiere los sensores del teléfono en tiempo real que la app de Home Assistant no expone.
-- Funciona con la frecuencia de ubicación que entregue cada teléfono: si el teléfono informa cada 5 minutos, los
-  avisos llegan con ese desfase.
+- Crash detection: it needs real-time phone sensors that the Home Assistant app doesn't expose.
+- Alerts are only as timely as each phone's location updates: if a phone reports every 5 minutes, alerts arrive
+  with that delay.
+
+## Contributing
+
+Issues and pull requests are welcome. Run the tests with:
+
+```bash
+pip install pytest-homeassistant-custom-component
+pytest tests
+```

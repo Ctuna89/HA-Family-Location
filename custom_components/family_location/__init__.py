@@ -1,8 +1,8 @@
-"""Family Location: un reemplazo de Life360 que funciona dentro de Home Assistant.
+"""Family Location: a Life360 replacement that runs inside Home Assistant.
 
-La ubicación viene de la app Companion de Home Assistant (o de cualquier rastreador). Lugares, viajes,
-excesos de velocidad y avisos se calculan localmente; la ubicación no sale de tu Home Assistant salvo para
-buscar direcciones en OpenStreetMap si activas esa opción.
+Location comes from the Home Assistant Companion app (or any device tracker). Places, trips, speeding and
+alerts are computed locally; the location never leaves your Home Assistant except to look up addresses on
+OpenStreetMap when that option is enabled.
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ SERVICE_SCHEMA = vol.Schema({
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Acciones «check-in» y «pedir ayuda»."""
+    """«check in» and «ask for help» actions."""
 
     async def _run(call: ServiceCall, sos: bool) -> None:
         entity_id = call.data[ATTR_ENTITY_ID]
@@ -75,5 +75,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: FamilyLocationConfigEnt
 
 
 async def _reload(hass: HomeAssistant, entry: FamilyLocationConfigEntry) -> None:
-    """Cambiaron las opciones o se agregó/editó/borró un integrante o lugar."""
+    """Options changed, or a member or place was added, edited or removed."""
     await hass.config_entries.async_reload(entry.entry_id)
