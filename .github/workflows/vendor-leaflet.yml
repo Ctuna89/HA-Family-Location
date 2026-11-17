@@ -1,0 +1,39 @@
+name: Vendor Leaflet
+
+# Copies Leaflet's built files and its license into the map card's folder.
+# Run it by hand (Actions → Vendor Leaflet → Run workflow) after changing LEAFLET_VERSION.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  LEAFLET_VERSION: "1.9.4"
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Leaflet from npm
+        run: |
+          npm pack "leaflet@${LEAFLET_VERSION}"
+          tar -xzf "leaflet-${LEAFLET_VERSION}.tgz"
+          dest=custom_components/family_location/frontend/leaflet
+          mkdir -p "$dest"
+          cp package/dist/leaflet.js package/dist/leaflet.css package/LICENSE "$dest/"
+          rm -rf package "leaflet-${LEAFLET_VERSION}.tgz"
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add custom_components/family_location/frontend/leaflet
+          if git diff --cached --quiet; then
+            echo "Leaflet ${LEAFLET_VERSION} is already there."
+            exit 0
+          fi
+          git commit -m "Vendor Leaflet ${LEAFLET_VERSION}"
+          git push
