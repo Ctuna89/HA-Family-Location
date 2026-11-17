@@ -60,11 +60,11 @@ async def setup_circle(hass: HomeAssistant, speed_limit=100, extra=(), **options
     entry = MockConfigEntry(
         domain=DOMAIN, title="Familia", data={}, options={**default_options(), **options},
         subentries_data=[
-            ConfigSubentryData(subentry_type="member", title="Jaime", unique_id="device_tracker.jaime",
-                               data={"entity_id": "device_tracker.jaime", "notify": ["notify.mobile_app_jaime"],
+            ConfigSubentryData(subentry_type="member", title="James", unique_id="device_tracker.james",
+                               data={"entity_id": "device_tracker.james", "notify": ["notify.mobile_app_james"],
                                      "receive_alerts": True, "speed_limit": speed_limit}),
-            ConfigSubentryData(subentry_type="member", title="Jeanette", unique_id="device_tracker.jeanette",
-                               data={"entity_id": "device_tracker.jeanette", "notify": ["notify.mobile_app_jeanette"],
+            ConfigSubentryData(subentry_type="member", title="Janet", unique_id="device_tracker.janet",
+                               data={"entity_id": "device_tracker.janet", "notify": ["notify.mobile_app_janet"],
                                      "receive_alerts": True, "speed_limit": 0}),
             ConfigSubentryData(subentry_type="place", title="Casa", unique_id=None,
                                data={"location": {"latitude": HOME[0], "longitude": HOME[1], "radius": 150},
@@ -84,43 +84,43 @@ async def setup_circle(hass: HomeAssistant, speed_limit=100, extra=(), **options
 
 async def test_arrive_leave_speeding_and_entities(hass: HomeAssistant, freezer):
     hass.config.language = "es"
-    jaime_calls = capture_notify(hass, "mobile_app_jaime")
-    jeanette_calls = capture_notify(hass, "mobile_app_jeanette")
+    james_calls = capture_notify(hass, "mobile_app_james")
+    janet_calls = capture_notify(hass, "mobile_app_janet")
     events = []
     hass.bus.async_listen(EVENT_NAME, callback(lambda e: events.append(e.data)))
-    tracker(hass, "device_tracker.jaime", *HOME, battery=80)
-    tracker(hass, "device_tracker.jeanette", *HOME)
+    tracker(hass, "device_tracker.james", *HOME, battery=80)
+    tracker(hass, "device_tracker.janet", *HOME)
 
     with patch("custom_components.family_location.engine.geocode.reverse", return_value="Av. Siempre Viva 742"):
         await setup_circle(hass)
-        assert hass.states.get("sensor.jaime_lugar").state == "Casa"
-        assert hass.states.get("sensor.jaime_estado").state == "still"
+        assert hass.states.get("sensor.james_lugar").state == "Casa"
+        assert hass.states.get("sensor.james_estado").state == "still"
         assert hass.states.get("binary_sensor.casa_hay_alguien").state == "on"
         assert hass.states.get("sensor.casa_personas").state == "2"
-        assert hass.states.get("sensor.jaime_bateria_del_telefono").state == "80"
+        assert hass.states.get("sensor.james_bateria_del_telefono").state == "80"
 
-        # Jaime leaves home for work; halfway he goes 130 km/h twice.
+        # James leaves home for work; halfway he goes 130 km/h twice.
         for i, speed in enumerate([40, 130, 132, 50, 40], start=1):
             f = i / 5
             freezer.tick(timedelta(seconds=60))
-            tracker(hass, "device_tracker.jaime", HOME[0] + (WORK[0] - HOME[0]) * f,
+            tracker(hass, "device_tracker.james", HOME[0] + (WORK[0] - HOME[0]) * f,
                     HOME[1] + (WORK[1] - HOME[1]) * f, speed=speed)
             await hass.async_block_till_done()
-        assert hass.states.get("binary_sensor.jaime_en_movimiento").state == "on"
-        tracker(hass, "device_tracker.jaime", *WORK, speed=0)
+        assert hass.states.get("binary_sensor.james_en_movimiento").state == "on"
+        tracker(hass, "device_tracker.james", *WORK, speed=0)
         await hass.async_block_till_done()
         await advance(hass, freezer, 120)
-        assert hass.states.get("sensor.jaime_lugar").state != "Trabajo"   # not confirmed yet
+        assert hass.states.get("sensor.james_lugar").state != "Trabajo"   # not confirmed yet
         await advance(hass, freezer, 400)   # 5 minutes stopped
     kinds = [e["type"] for e in events]
     assert kinds == ["leave", "trip_start", "speeding", "arrive", "trip_end"]
-    titles = [c.data["title"] for c in jeanette_calls]
+    titles = [c.data["title"] for c in janet_calls]
     # speeding is alerted right away; arrivals and departures wait 90 s in case someone was with him
-    assert titles == ["⚠️ Exceso de velocidad: Jaime", "🚶 Jaime salió de Casa", "📍 Jaime llegó a Trabajo"]
-    assert "maps" in jeanette_calls[0].data["data"]["url"]
-    assert jaime_calls == []   # nobody is alerted about themselves
-    assert hass.states.get("sensor.jaime_lugar").state == "Trabajo"
-    last = hass.states.get("sensor.jaime_ultimo_viaje")
+    assert titles == ["⚠️ Exceso de velocidad: James", "🚶 James salió de Casa", "📍 James llegó a Trabajo"]
+    assert "maps" in janet_calls[0].data["data"]["url"]
+    assert james_calls == []   # nobody is alerted about themselves
+    assert hass.states.get("sensor.james_lugar").state == "Trabajo"
+    last = hass.states.get("sensor.james_ultimo_viaje")
     assert last.attributes["from"] == "Casa" and last.attributes["to"] == "Trabajo"
     assert float(last.state) > 4
     assert hass.states.get("sensor.casa_personas").state == "1"
@@ -128,19 +128,19 @@ async def test_arrive_leave_speeding_and_entities(hass: HomeAssistant, freezer):
 
 async def test_check_in_and_sos(hass: HomeAssistant):
     hass.config.language = "es"
-    calls = capture_notify(hass, "mobile_app_jeanette")
-    capture_notify(hass, "mobile_app_jaime")
-    tracker(hass, "device_tracker.jaime", -33.45, -70.66)
-    tracker(hass, "device_tracker.jeanette", *HOME)
+    calls = capture_notify(hass, "mobile_app_janet")
+    capture_notify(hass, "mobile_app_james")
+    tracker(hass, "device_tracker.james", -33.45, -70.66)
+    tracker(hass, "device_tracker.janet", *HOME)
     with patch("custom_components.family_location.engine.geocode.reverse", return_value="Av. Matta 100, Santiago"):
         await setup_circle(hass)
-        await hass.services.async_call(DOMAIN, "check_in", {"entity_id": "device_tracker.jaime"}, blocking=True)
-        await hass.services.async_call("button", "press", {"entity_id": "button.jaime_pedir_ayuda"}, blocking=True)
+        await hass.services.async_call(DOMAIN, "check_in", {"entity_id": "device_tracker.james"}, blocking=True)
+        await hass.services.async_call("button", "press", {"entity_id": "button.james_pedir_ayuda"}, blocking=True)
         await hass.async_block_till_done()
-    assert calls[0].data["message"] == "Jaime está cerca de Av. Matta 100, Santiago."
-    assert calls[1].data["title"] == "🆘 Jaime pide ayuda"
+    assert calls[0].data["message"] == "James está cerca de Av. Matta 100, Santiago."
+    assert calls[1].data["title"] == "🆘 James pide ayuda"
     assert calls[1].data["data"]["push"]["sound"]["critical"] == 1
-    assert hass.states.get("sensor.jaime_lugar").state == "Av. Matta 100, Santiago"
+    assert hass.states.get("sensor.james_lugar").state == "Av. Matta 100, Santiago"
 
 
 @pytest.fixture(autouse=True)
@@ -152,27 +152,27 @@ def _no_network():
 async def test_config_flow_creates_members_and_home(hass: HomeAssistant):
     hass.config.language = "es"
     assert await async_setup_component(hass, "zone", {})
-    hass.states.async_set("person.jaime", "home", {"friendly_name": "Jaime", "latitude": hass.config.latitude,
+    hass.states.async_set("person.james", "home", {"friendly_name": "James", "latitude": hass.config.latitude,
                                                      "longitude": hass.config.longitude, "device_trackers": []})
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
     assert result["type"] is FlowResultType.FORM
     result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], {"name": "Familia", "members": ["person.jaime"], "add_home": True})
+        result["flow_id"], {"name": "Familia", "members": ["person.james"], "add_home": True})
     assert result["type"] is FlowResultType.CREATE_ENTRY
     entry = result["result"]
     subs = {s.title: s for s in entry.subentries.values()}
-    assert set(subs) == {"Jaime", "Casa"}
+    assert set(subs) == {"James", "Casa"}
     assert subs["Casa"].data["zone"] == "zone.home"
     await hass.async_block_till_done()
-    assert hass.states.get("sensor.jaime_lugar").state == "Casa"
+    assert hass.states.get("sensor.james_lugar").state == "Casa"
 
 
 async def test_place_subentry_by_address(hass: HomeAssistant):
     hass.config.language = "es"
-    tracker(hass, "device_tracker.jaime", *HOME)
-    tracker(hass, "device_tracker.jeanette", *HOME)
+    tracker(hass, "device_tracker.james", *HOME)
+    tracker(hass, "device_tracker.janet", *HOME)
     entry = await setup_circle(hass)
-    jeanette = next(s.subentry_id for s in entry.subentries.values() if s.title == "Jeanette")
+    janet = next(s.subentry_id for s in entry.subentries.values() if s.title == "Janet")
 
     flow = await hass.config_entries.subentries.async_init((entry.entry_id, "place"), context={"source": "user"})
     with patch("custom_components.family_location.config_flow.geocode.geocode", return_value=None):
@@ -189,37 +189,37 @@ async def test_place_subentry_by_address(hass: HomeAssistant):
         flow["flow_id"], {"location": {"latitude": -33.401, "longitude": -70.571, "radius": 180}})
     assert res["step_id"] == "alerts"
     res = await hass.config_entries.subentries.async_configure(
-        flow["flow_id"], {"notify_arrive": True, "notify_leave": False, "watch": [], "recipients": [jeanette]})
+        flow["flow_id"], {"notify_arrive": True, "notify_leave": False, "watch": [], "recipients": [janet]})
     assert res["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
     place = next(s for s in entry.subentries.values() if s.title == "Colegio")
     assert place.data["location"] == {"latitude": -33.401, "longitude": -70.571, "radius": 180}
-    assert place.data["recipients"] == [jeanette]
+    assert place.data["recipients"] == [janet]
     assert hass.states.get("sensor.colegio_personas").state == "0"
 
 
 async def test_member_subentry(hass: HomeAssistant):
     hass.config.language = "es"
-    tracker(hass, "device_tracker.jaime", *HOME)
-    tracker(hass, "device_tracker.jeanette", *HOME)
+    tracker(hass, "device_tracker.james", *HOME)
+    tracker(hass, "device_tracker.janet", *HOME)
     tracker(hass, "device_tracker.hijo", *HOME)
     entry = await setup_circle(hass)
     flow = await hass.config_entries.subentries.async_init((entry.entry_id, "member"), context={"source": "user"})
     res = await hass.config_entries.subentries.async_configure(
-        flow["flow_id"], {"entity_id": "device_tracker.jaime", "notify": [], "receive_alerts": True, "speed_limit": 0})
+        flow["flow_id"], {"entity_id": "device_tracker.james", "notify": [], "receive_alerts": True, "speed_limit": 0})
     assert res["errors"] == {"entity_id": "already_member"}
     res = await hass.config_entries.subentries.async_configure(
-        flow["flow_id"], {"entity_id": "device_tracker.hijo", "name": "Tomás", "notify": [],
+        flow["flow_id"], {"entity_id": "device_tracker.hijo", "name": "Tom", "notify": [],
                           "receive_alerts": False, "speed_limit": 90})
     assert res["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
-    assert hass.states.get("sensor.tomas_lugar").state == "Casa"
-    assert hass.states.get("binary_sensor.tomas_exceso_de_velocidad").state == "off"
+    assert hass.states.get("sensor.tom_lugar").state == "Casa"
+    assert hass.states.get("binary_sensor.tom_exceso_de_velocidad").state == "off"
 
 
 async def test_options_flow(hass: HomeAssistant):
-    tracker(hass, "device_tracker.jaime", *HOME)
-    tracker(hass, "device_tracker.jeanette", *HOME)
+    tracker(hass, "device_tracker.james", *HOME)
+    tracker(hass, "device_tracker.janet", *HOME)
     entry = await setup_circle(hass)
     flow = await hass.config_entries.options.async_init(entry.entry_id)
     opts = {**default_options(), "notify_trips": True}
@@ -231,8 +231,8 @@ async def test_options_flow(hass: HomeAssistant):
 
 async def test_place_reconfigure_keeps_location(hass: HomeAssistant):
     hass.config.language = "es"
-    tracker(hass, "device_tracker.jaime", *HOME)
-    tracker(hass, "device_tracker.jeanette", *HOME)
+    tracker(hass, "device_tracker.james", *HOME)
+    tracker(hass, "device_tracker.janet", *HOME)
     entry = await setup_circle(hass)
     casa = next(s for s in entry.subentries.values() if s.title == "Casa")
     flow = await hass.config_entries.subentries.async_init(
@@ -249,23 +249,23 @@ async def test_place_reconfigure_keeps_location(hass: HomeAssistant):
     updated = entry.subentries[casa.subentry_id]
     assert updated.title == "Hogar" and updated.data["location"]["radius"] == 300
     assert updated.data["notify_arrive"] is False
-    assert hass.states.get("sensor.jaime_lugar").state == "Hogar"
+    assert hass.states.get("sensor.james_lugar").state == "Hogar"
 
 
 async def test_no_alert_to_who_travels_together(hass: HomeAssistant, freezer):
-    """Jaime and Jeanette travel together from Home to Work: no alerts between them; Tomás (at home) gets them."""
+    """James and Janet travel together from Home to Work: no alerts between them; Tom (at home) gets them."""
     hass.config.language = "es"
-    jaime = capture_notify(hass, "mobile_app_jaime")
-    jeanette = capture_notify(hass, "mobile_app_jeanette")
-    tomas = capture_notify(hass, "mobile_app_tomas")
-    for ent in ("jaime", "jeanette", "tomas"):
+    james = capture_notify(hass, "mobile_app_james")
+    janet = capture_notify(hass, "mobile_app_janet")
+    tom = capture_notify(hass, "mobile_app_tom")
+    for ent in ("james", "janet", "tom"):
         tracker(hass, f"device_tracker.{ent}", *HOME)
     await setup_circle(hass, speed_limit=0,
-                       extra=[member("device_tracker.tomas", "Tomás", "notify.mobile_app_tomas")])
+                       extra=[member("device_tracker.tom", "Tom", "notify.mobile_app_tom")])
 
     def both(lat, lon, speed):
-        tracker(hass, "device_tracker.jaime", lat, lon, speed=speed)
-        tracker(hass, "device_tracker.jeanette", lat + 0.0003, lon, speed=speed)
+        tracker(hass, "device_tracker.james", lat, lon, speed=speed)
+        tracker(hass, "device_tracker.janet", lat + 0.0003, lon, speed=speed)
 
     for i in range(1, 6):
         f = i / 5
@@ -278,21 +278,21 @@ async def test_no_alert_to_who_travels_together(hass: HomeAssistant, freezer):
     await advance(hass, freezer, 400)
     await advance(hass, freezer, 120)
 
-    assert jaime == [] and jeanette == []
-    titles = sorted(c.data["title"] for c in tomas)
-    assert titles == ["📍 Jaime llegó a Trabajo", "📍 Jeanette llegó a Trabajo",
-                      "🚶 Jaime salió de Casa", "🚶 Jeanette salió de Casa"]
+    assert james == [] and janet == []
+    titles = sorted(c.data["title"] for c in tom)
+    assert titles == ["📍 James llegó a Trabajo", "📍 Janet llegó a Trabajo",
+                      "🚶 James salió de Casa", "🚶 Janet salió de Casa"]
 
 
 async def test_alert_when_not_together(hass: HomeAssistant, freezer):
     hass.config.language = "es"
-    jeanette = capture_notify(hass, "mobile_app_jeanette")
-    capture_notify(hass, "mobile_app_jaime")
-    tracker(hass, "device_tracker.jaime", *HOME)
-    tracker(hass, "device_tracker.jeanette", *HOME)
+    janet = capture_notify(hass, "mobile_app_janet")
+    capture_notify(hass, "mobile_app_james")
+    tracker(hass, "device_tracker.james", *HOME)
+    tracker(hass, "device_tracker.janet", *HOME)
     await setup_circle(hass, speed_limit=0)
-    tracker(hass, "device_tracker.jaime", HOME[0] + 0.01, HOME[1], speed=40)   # Jaime leaves alone
+    tracker(hass, "device_tracker.james", HOME[0] + 0.01, HOME[1], speed=40)   # James leaves alone
     await hass.async_block_till_done()
-    assert jeanette == []          # waits a bit in case he was accompanied
+    assert janet == []          # waits a bit in case he was accompanied
     await advance(hass, freezer, 120)
-    assert [c.data["title"] for c in jeanette] == ["🚶 Jaime salió de Casa"]
+    assert [c.data["title"] for c in janet] == ["🚶 James salió de Casa"]

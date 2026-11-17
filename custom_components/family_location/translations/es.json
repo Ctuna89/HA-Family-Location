@@ -128,7 +128,7 @@
         },
         "alerts": {
           "title": "Avisos de {name}",
-          "description": "Por ejemplo: «Jaime llegó a {name}».",
+          "description": "Por ejemplo: «James llegó a {name}».",
           "data": {
             "notify_arrive": "Avisar cuando alguien llega",
             "notify_leave": "Avisar cuando alguien sale",

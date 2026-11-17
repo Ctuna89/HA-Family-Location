@@ -3,7 +3,7 @@
 🇪🇸 [Leer en español](README.es.md)
 
 **A Life360 replacement that lives inside your Home Assistant.** Places by address, arrival and departure
-alerts for the whole family («Jaime arrived home», «Jeanette arrived at work»), who is on the move, trips with
+alerts for the whole family («James arrived home», «Janet arrived at work»), who is on the move, trips with
 distance and top speed, speeding alerts, low battery, check-in and an SOS button.
 
 No accounts, no subscription, and your location never goes through third-party servers: positions come from
@@ -18,12 +18,12 @@ the **Home Assistant Companion app** on each phone, and everything is computed i
 | 🏠 **Places by address** | Type «1600 Amphitheatre Pkwy, Mountain View», it is looked up on OpenStreetMap, you confirm the point on a map and adjust the radius. You can also drop a pin on the map or reuse an existing zone |
 | 🔔 **Arrivals and departures** | The rest of the circle is alerted when someone arrives at or leaves a place. Per place you choose whether to alert on arrival, on departure, for whom (e.g. only the kids at school) and to whom |
 | 🚦 **No false arrivals** | A trip only ends after 5 minutes without moving (configurable): a traffic light or a jam doesn't end it. Arrivals at places other than Home are announced only once the person stays there for those 5 minutes; driving past, or stopping at a light in front of work, doesn't count |
-| 👨‍👩‍👧 **Together? No alert** | If Jaime is with Jeanette, Jeanette doesn't get «Jaime arrived at Work» (nor the departure or the trip): only the rest of the circle does |
+| 👨‍👩‍👧 **Together? No alert** | If James is with Janet, Janet doesn't get «James arrived at Work» (nor the departure or the trip): only the rest of the circle does |
 | 🚗 **On the move** | *Still / Moving / Driving* status, current speed, and a «Moving» binary sensor |
 | 🛣️ **Trips** | Automatic start and end, distance, duration, top speed, origin and destination. Distance and trips today |
 | ⚠️ **Speeding** | Per-person limit (e.g. 100 km/h for the new teen driver). Confirmed by two consecutive readings to avoid false alerts from GPS jumps |
 | 🔋 **Low battery** | The circle is alerted when someone's phone drops below the threshold |
-| ✅ **Check-in** | A button (and action) that tells everyone «Jaime is at Home» or «near 742 Evergreen Terrace» |
+| ✅ **Check-in** | A button (and action) that tells everyone «James is at Home» or «near 742 Evergreen Terrace» |
 | 🆘 **Ask for help** | A button that sends a **critical** alert (rings even on silent) with a link to the location |
 | 📫 **Approximate address** | Optional: when someone is stopped away from their places, their address is shown |
 | 🤖 **Events for automations** | Every arrival, departure, trip, speeding, battery, check-in and SOS fires the `family_location_event` event |
@@ -97,14 +97,14 @@ Per place: `sensor.<place>_people` (how many and who) and `binary_sensor.<place>
 ```yaml
 action: family_location.check_in
 data:
-  entity_id: person.jaime
+  entity_id: person.james
   message: "Grabbing some bread"
 ```
 
 ```yaml
 action: family_location.sos
 data:
-  entity_id: person.jeanette
+  entity_id: person.janet
 ```
 
 ## Automations with the event
@@ -132,24 +132,24 @@ type: vertical-stack
 cards:
   - type: map
     entities:
-      - person.jaime
-      - person.jeanette
+      - person.james
+      - person.janet
     hours_to_show: 12
   - type: entities
     entities:
-      - sensor.jaime_place
-      - sensor.jaime_status
-      - sensor.jaime_speed
-      - sensor.jaime_last_trip
-      - sensor.jeanette_place
-      - sensor.jeanette_status
+      - sensor.james_place
+      - sensor.james_status
+      - sensor.james_speed
+      - sensor.james_last_trip
+      - sensor.janet_place
+      - sensor.janet_status
   - type: horizontal-stack
     cards:
       - type: button
-        entity: button.jaime_check_in
+        entity: button.james_check_in
         tap_action: {action: toggle}
       - type: button
-        entity: button.jaime_ask_for_help
+        entity: button.james_ask_for_help
         hold_action: {action: toggle}
         tap_action: {action: none}
 ```

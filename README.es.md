@@ -3,7 +3,7 @@
 🇬🇧 [Read in English](README.md)
 
 **Un reemplazo de Life360 que vive dentro de tu Home Assistant.** Lugares por dirección, avisos de llegada y
-salida para toda la familia («Jaime llegó a casa», «Jeanette llegó al trabajo»), quién está en movimiento,
+salida para toda la familia («James llegó a casa», «Janet llegó al trabajo»), quién está en movimiento,
 viajes con distancia y velocidad máxima, avisos de exceso de velocidad, batería baja, check-in y botón de ayuda.
 
 Sin cuentas, sin suscripción y sin que tu ubicación pase por servidores de terceros: la posición la entrega la
@@ -16,12 +16,12 @@ Sin cuentas, sin suscripción y sin que tu ubicación pase por servidores de ter
 | 🏠 **Lugares por dirección** | Escribes «Av. Apoquindo 3000, Las Condes», se busca en OpenStreetMap, confirmas el punto en el mapa y ajustas el radio. También puedes marcarlo directo en el mapa o usar una zona que ya tengas |
 | 🔔 **Llegadas y salidas** | Aviso al resto del círculo cuando alguien llega o sale de un lugar. Por lugar eliges si se avisa al llegar, al salir, de quién (p. ej. solo los niños en el colegio) y a quién |
 | 🚦 **Sin falsas llegadas** | Un viaje termina recién tras 5 minutos quieto (configurable): un semáforo o un taco no lo cortan. Y la llegada a un lugar que no sea Casa se avisa solo cuando la persona se queda ahí esos 5 minutos; pasar por al lado o parar en un semáforo frente al trabajo no cuenta |
-| 👨‍👩‍👧 **Si van juntos, no se avisan** | Si Jaime va con Jeanette, a Jeanette no le llega «Jaime llegó al Trabajo» (ni la salida ni el viaje): solo al resto del círculo |
+| 👨‍👩‍👧 **Si van juntos, no se avisan** | Si James va con Janet, a Janet no le llega «James llegó al Trabajo» (ni la salida ni el viaje): solo al resto del círculo |
 | 🚗 **En movimiento** | Estado *Quieto / En movimiento / Conduciendo*, velocidad actual, sensor binario «En movimiento» |
 | 🛣️ **Viajes** | Inicio y fin automáticos, distancia, duración, velocidad máxima, origen y destino. Distancia y viajes del día |
 | ⚠️ **Exceso de velocidad** | Límite por persona (p. ej. 100 km/h para el hijo que recién maneja). Se confirma con dos lecturas seguidas para evitar falsos avisos por saltos del GPS |
 | 🔋 **Batería baja** | Aviso al círculo cuando el teléfono de alguien baja del umbral |
-| ✅ **Check-in** | Botón (y acción) que avisa a todos «Jaime está en Casa» o «cerca de Av. Matta 100» |
+| ✅ **Check-in** | Botón (y acción) que avisa a todos «James está en Casa» o «cerca de Av. Matta 100» |
 | 🆘 **Pedir ayuda** | Botón que envía una alerta **crítica** (suena aunque el teléfono esté en silencio) con un enlace a la ubicación |
 | 📫 **Dirección aproximada** | Opcional: cuando alguien está detenido fuera de sus lugares se muestra la dirección |
 | 🤖 **Eventos para automatizar** | Cada llegada, salida, viaje, exceso, batería, check-in y SOS genera el evento `family_location_event` |
@@ -96,14 +96,14 @@ Por cada lugar: `sensor.<lugar>_personas` (cuántos y quiénes) y `binary_sensor
 ```yaml
 action: family_location.check_in
 data:
-  entity_id: person.jaime
+  entity_id: person.james
   message: "Pasé a comprar pan"
 ```
 
 ```yaml
 action: family_location.sos
 data:
-  entity_id: person.jeanette
+  entity_id: person.janet
 ```
 
 ## Automatizaciones con el evento
@@ -131,24 +131,24 @@ type: vertical-stack
 cards:
   - type: map
     entities:
-      - person.jaime
-      - person.jeanette
+      - person.james
+      - person.janet
     hours_to_show: 12
   - type: entities
     entities:
-      - sensor.jaime_lugar
-      - sensor.jaime_estado
-      - sensor.jaime_velocidad
-      - sensor.jaime_ultimo_viaje
-      - sensor.jeanette_lugar
-      - sensor.jeanette_estado
+      - sensor.james_lugar
+      - sensor.james_estado
+      - sensor.james_velocidad
+      - sensor.james_ultimo_viaje
+      - sensor.janet_lugar
+      - sensor.janet_estado
   - type: horizontal-stack
     cards:
       - type: button
-        entity: button.jaime_check_in
+        entity: button.james_check_in
         tap_action: {action: toggle}
       - type: button
-        entity: button.jaime_pedir_ayuda
+        entity: button.james_pedir_ayuda
         hold_action: {action: toggle}
         tap_action: {action: none}
 ```

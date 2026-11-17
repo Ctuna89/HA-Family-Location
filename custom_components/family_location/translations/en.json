@@ -128,7 +128,7 @@
         },
         "alerts": {
           "title": "Alerts for {name}",
-          "description": "For example: «Jaime arrived at {name}».",
+          "description": "For example: «James arrived at {name}».",
           "data": {
             "notify_arrive": "Alert when someone arrives",
             "notify_leave": "Alert when someone leaves",
