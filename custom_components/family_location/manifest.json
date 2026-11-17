@@ -2,6 +2,8 @@
   "domain": "family_location",
   "name": "Family Location",
   "after_dependencies": [
+    "frontend",
+    "http",
     "mobile_app",
     "notify"
   ],
@@ -18,5 +20,5 @@
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/Ctuna89/HA-Family-Location/issues",
   "requirements": [],
-  "version": "0.3.0"
+  "version": "0.4.0"
 }
