@@ -183,8 +183,13 @@ class CircleEngine:
         stored = await self._store.async_load() or {}
         saved = stored.get("members") or {}
         self.addresses = dict(stored.get("addresses") or {})
+        adopted = False
         for member_id in self.members:
-            self.trackers[member_id] = MemberTracker.from_dict(saved.get(member_id) or {})
+            tracker = self.trackers[member_id] = MemberTracker.from_dict(saved.get(member_id) or {})
+            # places added (the entry reloads) while someone is already inside them: no arrival alert
+            adopted |= tracker.adopt_places(self.place_list(member_id))
+        if adopted:
+            self._schedule_save()
         self._index_entities()
         if self._by_entity:
             self._unsubs.append(async_track_state_change_event(self.hass, list(self._by_entity), self._on_state))
