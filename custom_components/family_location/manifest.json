@@ -1,14 +1,22 @@
 {
   "domain": "family_location",
   "name": "Family Location",
-  "codeowners": ["@Ctuna89"],
+  "after_dependencies": [
+    "mobile_app",
+    "notify"
+  ],
+  "codeowners": [
+    "@Ctuna89"
+  ],
   "config_flow": true,
-  "dependencies": ["person", "zone"],
-  "after_dependencies": ["mobile_app", "notify"],
+  "dependencies": [
+    "person",
+    "zone"
+  ],
   "documentation": "https://github.com/Ctuna89/HA-Family-Location",
   "integration_type": "hub",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/Ctuna89/HA-Family-Location/issues",
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.1.1"
 }
