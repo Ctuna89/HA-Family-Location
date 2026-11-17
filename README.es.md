@@ -163,6 +163,40 @@ cards:
 
 El historial de recorridos lo guarda Home Assistant: la tarjeta de mapa con `hours_to_show` muestra la ruta.
 
+## Tarjeta de mapa
+
+La integración trae su propia tarjeta de mapa. Cada lugar se dibuja como un círculo semitransparente con su
+radio real, y cada persona con su foto (o sus iniciales). Al tocar a alguien se ve dónde está, si está quieto o
+manejando, su batería y cuándo informó su teléfono por última vez. No hay que instalar nada: la tarjeta se carga
+sola al configurar la integración (recarga la página o la app después de actualizar).
+
+```yaml
+type: custom:family-location-map-card
+people:
+  - person.jaime
+  - entity: person.jeanette
+    color: "#db2777"
+places:            # nombres de lugares, sensores de Family Location o zonas de Home Assistant
+  - Casa
+  - entity: zone.oficina
+    color: "#7c3aed"
+```
+
+| Opción | Por defecto | |
+|---|---|---|
+| `people` | todas las `person` con ubicación | `person.*` o `device_tracker.*`, opcionalmente con `name` y `color` |
+| `places` | todos los lugares de Family Location | nombre del lugar, `sensor.<lugar>_personas`, o cualquier `zone.*`, opcionalmente con `name` y `color` |
+| `opacity` | `0.2` | opacidad del relleno de los círculos (0–1) |
+| `min_circle_px` | `10` | con el mapa alejado, los lugares chicos se dibujan con este radio en píxeles para que se sigan viendo |
+| `labels` | `true` | nombre de cada lugar bajo su círculo |
+| `height` | `400` | alto en píxeles (en una vista de panel ocupa toda la pantalla) |
+| `dark_mode` | `auto` | `auto` sigue a Home Assistant, o `light` / `dark` |
+| `fit` | `all` | `people` centra el mapa solo en las personas |
+| `title`, `language` | | título de la tarjeta; `es` o `en` (por defecto, el idioma del usuario) |
+
+Los mapas de fondo vienen de [OpenStreetMap](https://www.openstreetmap.org/copyright) y los carga el navegador,
+como cualquier mapa web: OpenStreetMap ve la zona que se muestra, no dónde está tu familia.
+
 ### Ranking semanal
 
 `sensor.<círculo>_ranking_semanal` muestra quién manejó más esta semana, con el ranking completo en el atributo
@@ -191,3 +225,10 @@ content: >
 - Detección de choques: requiere los sensores del teléfono en tiempo real que la app de Home Assistant no expone.
 - Funciona con la frecuencia de ubicación que entregue cada teléfono: si el teléfono informa cada 5 minutos, los
   avisos llegan con ese desfase.
+
+## Créditos
+
+- La tarjeta de mapa dibuja con [Leaflet](https://leafletjs.com) 1.9.4 (licencia BSD 2-Clause,
+  © Volodymyr Agafonkin y CloudMade), incluido en `custom_components/family_location/frontend/leaflet/` con su
+  licencia.
+- Datos y mapas © colaboradores de [OpenStreetMap](https://www.openstreetmap.org/copyright).

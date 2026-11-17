@@ -164,6 +164,40 @@ cards:
 
 Home Assistant keeps the location history: the map card with `hours_to_show` shows the route.
 
+## Map card
+
+The integration includes its own map card. Each place is drawn as a semi-transparent circle with its real
+radius, and each person as their picture (or initials). Tapping someone shows where they are, whether they're
+still or driving, their battery and when their phone last reported. Nothing to install: the card is loaded
+automatically once the integration is set up (reload the page or the app after updating).
+
+```yaml
+type: custom:family-location-map-card
+people:
+  - person.james
+  - entity: person.janet
+    color: "#db2777"
+places:            # place names, Family Location sensors or Home Assistant zones
+  - Home
+  - entity: zone.office
+    color: "#7c3aed"
+```
+
+| Option | Default | |
+|---|---|---|
+| `people` | every `person` with a location | `person.*` or `device_tracker.*`, optionally with `name` and `color` |
+| `places` | every Family Location place | a place name, a `sensor.<place>_people`, or any `zone.*`, optionally with `name` and `color` |
+| `opacity` | `0.2` | fill opacity of the circles (0–1) |
+| `min_circle_px` | `10` | zoomed out, small places are drawn with this radius in pixels so they stay visible |
+| `labels` | `true` | place names under the circles |
+| `height` | `400` | height in pixels (in a panel view it takes the whole screen) |
+| `dark_mode` | `auto` | `auto` follows Home Assistant, or `light` / `dark` |
+| `fit` | `all` | `people` centers the map on the people only |
+| `title`, `language` | | card title; `es` or `en` (by default, the user's language) |
+
+The map tiles come from [OpenStreetMap](https://www.openstreetmap.org/copyright) and are loaded by the browser,
+like any web map: OpenStreetMap sees the area being displayed, not where your family is.
+
 ### Weekly leaderboard
 
 `sensor.<circle>_weekly_leaderboard` shows who drove the most this week, with the full ranking in its
@@ -193,6 +227,13 @@ content: >
 - Crash detection: it needs real-time phone sensors that the Home Assistant app doesn't expose.
 - Alerts are only as timely as each phone's location updates: if a phone reports every 5 minutes, alerts arrive
   with that delay.
+
+## Credits
+
+- The map card draws with [Leaflet](https://leafletjs.com) 1.9.4 (BSD 2-Clause License,
+  © Volodymyr Agafonkin and CloudMade), included in
+  `custom_components/family_location/frontend/leaflet/` with its license.
+- Map data and tiles © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors.
 
 ## Contributing
 
