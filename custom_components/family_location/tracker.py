@@ -142,6 +142,7 @@ class MemberTracker:
         self.initialized = False
         self.places: dict[str, datetime] = {}   # place id -> since when they are there (confirmed arrival)
         self.pending: dict[str, datetime] = {}  # entered the radius but not yet confirmed as staying
+        self.known_places: set[str] | None = None   # places already taken into account (None: not recorded yet)
         self.last_fix: Fix | None = None
         self.speed_kmh: float | None = None
         self.anchor: tuple[float, float] | None = None   # resting point
@@ -178,6 +179,31 @@ class MemberTracker:
         return [pid for pid, _ in sorted(self.places.items(), key=lambda kv: kv[1], reverse=True)]
 
     # ------------------------------------------------------------------ input
+    def adopt_places(self, places: list[Place]) -> bool:
+        """Takes new places into account without alerts.
+
+        A place created while someone is already inside it (for example adding «Work» from the office) is taken
+        as where they are, as on the first position. Without this, their next position would be announced as an
+        arrival hours after they really arrived. Returns True if the state changed.
+        """
+        ids = {p.id for p in places}
+        changed = False
+        if self.initialized and self.last_fix is not None:
+            fix = self.last_fix
+            for place in places:
+                if self.known_places is not None and place.id in self.known_places:
+                    continue
+                if place.id in self.places or place.id in self.pending:
+                    continue
+                if place.distance(fix.lat, fix.lon) <= place.radius:
+                    self.places[place.id] = fix.time
+                    self.away_since = None
+                    changed = True
+        if self.known_places != ids:
+            self.known_places = ids
+            changed = True
+        return changed
+
     def process(self, fix: Fix, places: list[Place], settings: Settings) -> list[Event]:
         """Processes a new position and returns the events it produces."""
         self._driving_speed = settings.driving_speed
@@ -204,8 +230,12 @@ class MemberTracker:
             self.still_since = fix.time
             self.away_since = None if self.places else fix.time
             self.initialized = True
+            self.known_places = {p.id for p in places}
             self.last_fix = fix
             return events
+
+        # Places created since the last position, where they already were: no arrival
+        self.adopt_places(places)
 
         # Places that no longer exist
         known = {p.id for p in places}
@@ -426,6 +456,7 @@ class MemberTracker:
             "initialized": self.initialized,
             "places": {k: v.isoformat() for k, v in self.places.items()},
             "pending": {k: v.isoformat() for k, v in self.pending.items()},
+            "known_places": sorted(self.known_places) if self.known_places is not None else None,
             "last_fix": fix,
             "anchor": list(self.anchor) if self.anchor else None,
             "still_since": self.still_since.isoformat() if self.still_since else None,
@@ -446,6 +477,8 @@ class MemberTracker:
             self.initialized = bool(data.get("initialized"))
             self.places = {k: datetime.fromisoformat(v) for k, v in (data.get("places") or {}).items()}
             self.pending = {k: datetime.fromisoformat(v) for k, v in (data.get("pending") or {}).items()}
+            known = data.get("known_places")
+            self.known_places = set(known) if known is not None else None
             if fix := data.get("last_fix"):
                 self.last_fix = Fix(**{**fix, "time": datetime.fromisoformat(fix["time"])})
             if anchor := data.get("anchor"):
