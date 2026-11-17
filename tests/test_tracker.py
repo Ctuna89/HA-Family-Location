@@ -169,3 +169,50 @@ def test_roundtrip_storage():
     assert copy.moving and copy.trip.start_place == "Casa"
     assert copy.battery == 70 and copy.last_fix == t.last_fix
     assert MemberTracker.from_dict({"places": "roto"}).initialized is False
+
+
+def test_place_created_where_they_are_is_adopted_without_alert():
+    t = MemberTracker()
+    t.process(fix(WORK.lat, WORK.lon, 0), [HOME], S)   # only Home exists yet: at work they are «away»
+    assert t.current_place_ids() == []
+    assert t.adopt_places(PLACES) is True               # «Trabajo» is created while they are there
+    assert t.current_place_ids() == ["work"]
+    # their next position is not announced as an arrival
+    assert t.process(fix(WORK.lat + 0.0002, WORK.lon, 60), PLACES, S) == []
+    assert t.current_place_ids() == ["work"]
+
+
+def test_place_created_where_they_are_is_adopted_on_next_position():
+    # without calling adopt_places (e.g. the place appears between two positions), process() adopts it too
+    t = MemberTracker()
+    t.process(fix(WORK.lat, WORK.lon, 0), [HOME], S)
+    assert t.process(fix(WORK.lat + 0.0002, WORK.lon, 60), PLACES, S) == []
+    assert t.current_place_ids() == ["work"]
+
+
+def test_place_created_elsewhere_still_announces_the_arrival():
+    t = MemberTracker()
+    t.process(fix(HOME.lat, HOME.lon, 0), [HOME], S)
+    assert t.adopt_places(PLACES) is True                # «Trabajo» created from home
+    assert t.current_place_ids() == ["home"]
+    events = []
+    for i in range(1, 11):
+        lat, lon = interp(HOME, WORK, i / 10)
+        events += t.process(fix(lat, lon, i, speed=40), PLACES, S)
+    events += t.process(fix(WORK.lat, WORK.lon, 12, speed=0), PLACES, S)
+    events += t.tick(T0 + timedelta(minutes=16), PLACES, S)
+    assert "arrive" in types(events)
+    assert t.current_place_ids() == ["work"]
+
+
+def test_stored_state_from_older_version_adopts_places_silently():
+    # state saved by 0.2.0 has no «known_places»: places they are in are taken without alerts
+    t = MemberTracker()
+    t.process(fix(WORK.lat, WORK.lon, 0), [HOME], S)
+    data = t.to_dict()
+    del data["known_places"]
+    old = MemberTracker.from_dict(data)
+    assert old.known_places is None
+    assert old.process(fix(WORK.lat + 0.0002, WORK.lon, 60), PLACES, S) == []
+    assert old.current_place_ids() == ["work"]
+    assert MemberTracker.from_dict(old.to_dict()).known_places == {"home", "work"}
