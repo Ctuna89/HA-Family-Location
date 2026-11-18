@@ -26,17 +26,50 @@ const TEXT = {
   },
 };
 
-// CARTO basemaps (OpenStreetMap data), the same provider as Home Assistant's own map card: free, no key, and
-// they work from any address (OpenStreetMap's own tile servers block shared domains such as ui.nabu.casa).
-// A different provider can be set with «tile_url» (and «tile_url_dark» / «tile_attribution»); a custom
-// provider without a dark variant is shown with inverted colors in dark mode.
-const TILES_LIGHT = "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-const TILES_DARK = "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+// Map tiles come through Home Assistant's own tile proxy (the «map_tiles» integration, the same one its map
+// card uses): Home Assistant fetches OpenStreetMap tiles identifying itself, so they work from any address,
+// including ui.nabu.casa, without keys. The browser authenticates with a short-lived token that is asked for
+// over the WebSocket and rotated by Home Assistant every 30 minutes.
+// On a Home Assistant without that proxy, OpenStreetMap's tiles are loaded directly (fine on the local network).
+// A different provider can be set with «tile_url» (and «tile_url_dark» / «tile_attribution»).
+// Raster tiles have no dark variant, so in dark mode they are shown with inverted colors.
+const PROXY_PATH = "/api/map_tiles/raster/{z}/{x}/{y}.png?token={token}";
+const OSM_TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, ' +
-  '&copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>';
-const CUSTOM_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
+const TOKEN_REFRESH_MS = 20 * 60 * 1000;
+
+// One token for every card on the page.
+const tileToken = { value: undefined, failed: false, pending: undefined, timer: undefined, listeners: new Set() };
+
+function fetchTileToken(hass, force = false) {
+  if (!hass?.connection) return Promise.resolve(undefined);
+  if (tileToken.value && !force) return Promise.resolve(tileToken.value);
+  if (tileToken.pending) return tileToken.pending;
+  tileToken.pending = hass.connection
+    .sendMessagePromise({ type: "map_tiles/access_token" })
+    .then((result) => {
+      tileToken.failed = false;
+      if (result?.token && result.token !== tileToken.value) {
+        tileToken.value = result.token;
+        tileToken.listeners.forEach((listener) => listener(tileToken.value));
+      }
+      if (!tileToken.timer) {
+        tileToken.timer = setInterval(() => fetchTileToken(hass, true), TOKEN_REFRESH_MS);
+      }
+      return tileToken.value;
+    })
+    .catch(() => {
+      // a Home Assistant without the tile proxy: the card falls back to OpenStreetMap's own tiles
+      if (!tileToken.value) tileToken.failed = true;
+      tileToken.listeners.forEach((listener) => listener(tileToken.value));
+      return tileToken.value;
+    })
+    .finally(() => {
+      tileToken.pending = undefined;
+    });
+  return tileToken.pending;
+}
 
 const LEAFLET_JS = new URL("leaflet/leaflet.js", import.meta.url).href;
 const LEAFLET_CSS = new URL("leaflet/leaflet.css", import.meta.url).href;
@@ -127,6 +160,12 @@ class FamilyLocationMapCard extends HTMLElement {
     // The map is kept: Lovelace re-attaches the same card when switching views.
   }
 
+  _instanceUrl(path) {
+    // concatenated, so {z}/{x}/{y} survive; absolute because the page may not be served by Home Assistant (Cast)
+    const base = (this._hass?.auth?.data?.hassUrl || location.origin).replace(/\/+$/, "");
+    return `${base}${path}`;
+  }
+
   // ------------------------------------------------------------------ building
   _t(key, n) {
     const lang = (this._config?.language || this._hass?.locale?.language || this._hass?.language || "en").slice(0, 2);
@@ -204,6 +243,14 @@ class FamilyLocationMapCard extends HTMLElement {
     map.createPane("flLabels").style.zIndex = 450; // above the circles, below the people
     map.createPane("flPeople").style.zIndex = 620;
     this._placesLayer = L.layerGroup().addTo(map);
+    tileToken.listeners.add((token) => {
+      if (this._tiles && this._tilesProxy && token) {
+        this._tiles.options.token = token;
+        this._tiles.redraw();
+      }
+      this._update();
+    });
+    if (!this._config.tile_url) fetchTileToken(this._hass);
     this._peopleLayer = L.layerGroup().addTo(map);
     map.on("zoomend", () => this._sizeShapes());
 
@@ -227,16 +274,41 @@ class FamilyLocationMapCard extends HTMLElement {
     const dark = mode === true || mode === "dark" || ((mode === "auto" || mode === undefined) && !!this._hass?.themes?.darkMode);
     const c = this._config;
     const custom = !!c.tile_url;
-    const url = custom ? (dark && c.tile_url_dark) || c.tile_url : dark ? TILES_DARK : TILES_LIGHT;
-    // only a custom provider without its own dark tiles gets the inverted-colors filter
-    const invert = dark && custom && !c.tile_url_dark;
-    const key = `${url}|${invert}`;
     this._tilesDark = dark;   // part of the drawing signature (label colors)
+    let url;
+    let proxy = false;
+    if (custom) {
+      url = (dark && c.tile_url_dark) || c.tile_url;
+    } else if (tileToken.value) {
+      url = this._instanceUrl(PROXY_PATH);
+      proxy = true;
+    } else if (tileToken.failed) {
+      url = OSM_TILES;
+    } else {
+      fetchTileToken(this._hass);   // the tiles are added once the token arrives
+      return;
+    }
+    // providers without their own dark tiles are shown with inverted colors
+    const invert = dark && !(custom && c.tile_url_dark);
+    const key = `${url}|${invert}`;
     if (this._tilesKey === key && this._tiles) return;
     this._tilesKey = key;
+    this._tilesProxy = proxy;
     if (this._tiles) this._tiles.remove();
-    const attribution = c.tile_attribution !== undefined ? String(c.tile_attribution) : custom ? CUSTOM_ATTRIBUTION : ATTRIBUTION;
-    this._tiles = this._L.tileLayer(url, { maxZoom: custom ? 19 : 20, attribution }).addTo(this._map);
+    const attribution = c.tile_attribution !== undefined ? String(c.tile_attribution) : ATTRIBUTION;
+    const options = { maxZoom: 20, maxNativeZoom: 19, attribution };
+    if (proxy) options.token = tileToken.value;
+    this._tiles = this._L.tileLayer(url, options).addTo(this._map);
+    if (proxy) {
+      // a refused tile most likely means the token rotated while the page sat open
+      let refreshed = 0;
+      this._tiles.on("tileerror", () => {
+        if (Date.now() - refreshed > 60000) {
+          refreshed = Date.now();
+          fetchTileToken(this._hass, true);
+        }
+      });
+    }
     this._root.classList.toggle("dark", dark);
     this._root.classList.toggle("invert", invert);
   }

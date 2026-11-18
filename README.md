@@ -193,16 +193,18 @@ places:            # place names, Family Location sensors or Home Assistant zone
 | `height` | `400` | height in pixels (in a panel view it takes the whole screen) |
 | `dark_mode` | `auto` | `auto` follows Home Assistant, or `light` / `dark` |
 | `fit` | `all` | `people` centers the map on the people only |
-| `tile_url` | CARTO | another tile provider, e.g. `https://tiles.example.com/{z}/{x}/{y}.png` |
+| `tile_url` | Home Assistant's tile proxy | another tile provider, e.g. `https://tiles.example.com/{z}/{x}/{y}.png` |
 | `tile_url_dark` | | dark tiles for that provider (without it, the light ones are shown with inverted colors) |
 | `tile_attribution` | | attribution text (HTML) for that provider |
 | `title`, `language` | | card title; `es` or `en` (by default, the user's language) |
 
-By default the map tiles are CARTO basemaps with [OpenStreetMap](https://www.openstreetmap.org/copyright) data,
-the same provider as Home Assistant's own map card, so they work locally and through Nabu Casa or any other
-remote URL. They are loaded by the browser, like any web map: the provider sees the area being displayed, not
-where your family is. Respect your provider's usage policy when you set `tile_url`; OpenStreetMap's own tile
-servers (`tile.openstreetmap.org`) block shared domains such as `ui.nabu.casa`.
+By default the map tiles come through **Home Assistant's own tile proxy**, the same one its built-in map card
+uses: Home Assistant fetches [OpenStreetMap](https://www.openstreetmap.org/copyright) tiles on the browser's
+behalf, so they work locally and through Nabu Casa or any other remote URL, with no API keys. OpenStreetMap
+sees the area being displayed, not where your family is. In dark mode the tiles are shown with inverted colors.
+On a Home Assistant version without that proxy, the card loads OpenStreetMap's tiles directly, which works on
+the local network but not through shared domains such as `ui.nabu.casa`. Respect your provider's usage policy
+when you set `tile_url`.
 
 ### Weekly leaderboard
 
@@ -252,8 +254,7 @@ Send a test with `family_location.sos` (or the button) to check it rings.
 - The map card draws with [Leaflet](https://leafletjs.com) 1.9.4 (BSD 2-Clause License,
   © Volodymyr Agafonkin and CloudMade), included in
   `custom_components/family_location/frontend/leaflet/` with its license.
-- Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors; map tiles ©
-  [CARTO](https://carto.com/attributions).
+- Map data and tiles © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors.
 
 ## Contributing
 
