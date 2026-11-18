@@ -26,10 +26,16 @@ const TEXT = {
   },
 };
 
-// OpenStreetMap's standard tiles: free, no key, fine for the light use of a family dashboard.
-// In dark mode the same tiles are shown with inverted colors.
-const TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+// CARTO basemaps (OpenStreetMap data), the same provider as Home Assistant's own map card: free, no key, and
+// they work from any address (OpenStreetMap's own tile servers block shared domains such as ui.nabu.casa).
+// A different provider can be set with «tile_url» (and «tile_url_dark» / «tile_attribution»); a custom
+// provider without a dark variant is shown with inverted colors in dark mode.
+const TILES_LIGHT = "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+const TILES_DARK = "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 const ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, ' +
+  '&copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>';
+const CUSTOM_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
 
 const LEAFLET_JS = new URL("leaflet/leaflet.js", import.meta.url).href;
@@ -75,6 +81,13 @@ class FamilyLocationMapCard extends HTMLElement {
     if (!config || typeof config !== "object") throw new Error("Invalid configuration");
     for (const key of ["people", "places"]) {
       if (config[key] !== undefined && !Array.isArray(config[key])) throw new Error(`«${key}» must be a list`);
+    }
+    for (const key of ["tile_url", "tile_url_dark"]) {
+      const url = config[key];
+      if (url === undefined) continue;
+      if (typeof url !== "string" || !/^https?:\/\//.test(url) || !["{z}", "{x}", "{y}"].every((t) => url.includes(t))) {
+        throw new Error(`«${key}» must be an http(s) URL with {z}, {x} and {y}`);
+      }
     }
     const opacity = config.opacity === undefined ? 0.2 : Number(config.opacity);
     if (isNaN(opacity) || opacity < 0 || opacity > 1) throw new Error("«opacity» must be between 0 and 1");
@@ -130,7 +143,7 @@ class FamilyLocationMapCard extends HTMLElement {
         :host { display: block; }
         :host([panel]) { height: 100%; }
         ha-card { overflow: hidden; display: flex; flex-direction: column; height: 100%; }
-        .dark .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.95) contrast(.9); }
+        .invert .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.95) contrast(.9); }
         #map { flex: 1 1 auto; min-height: 120px; position: relative; z-index: 0;
                background: var(--secondary-background-color, #e5e7eb); }
         .empty { padding: 16px; color: var(--secondary-text-color); }
@@ -212,12 +225,20 @@ class FamilyLocationMapCard extends HTMLElement {
   _setTiles() {
     const mode = this._config.dark_mode;
     const dark = mode === true || mode === "dark" || ((mode === "auto" || mode === undefined) && !!this._hass?.themes?.darkMode);
-    if (this._tilesDark === dark && this._tiles) return;
-    this._tilesDark = dark;
-    if (!this._tiles) {
-      this._tiles = this._L.tileLayer(TILES, { maxZoom: 19, attribution: ATTRIBUTION }).addTo(this._map);
-    }
+    const c = this._config;
+    const custom = !!c.tile_url;
+    const url = custom ? (dark && c.tile_url_dark) || c.tile_url : dark ? TILES_DARK : TILES_LIGHT;
+    // only a custom provider without its own dark tiles gets the inverted-colors filter
+    const invert = dark && custom && !c.tile_url_dark;
+    const key = `${url}|${invert}`;
+    this._tilesDark = dark;   // part of the drawing signature (label colors)
+    if (this._tilesKey === key && this._tiles) return;
+    this._tilesKey = key;
+    if (this._tiles) this._tiles.remove();
+    const attribution = c.tile_attribution !== undefined ? String(c.tile_attribution) : custom ? CUSTOM_ATTRIBUTION : ATTRIBUTION;
+    this._tiles = this._L.tileLayer(url, { maxZoom: custom ? 19 : 20, attribution }).addTo(this._map);
     this._root.classList.toggle("dark", dark);
+    this._root.classList.toggle("invert", invert);
   }
 
   // ------------------------------------------------------------------ data

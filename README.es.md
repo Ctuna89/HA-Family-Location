@@ -192,10 +192,17 @@ places:            # nombres de lugares, sensores de Family Location o zonas de 
 | `height` | `400` | alto en píxeles (en una vista de panel ocupa toda la pantalla) |
 | `dark_mode` | `auto` | `auto` sigue a Home Assistant, o `light` / `dark` |
 | `fit` | `all` | `people` centra el mapa solo en las personas |
+| `tile_url` | CARTO | otro proveedor de mapas, p. ej. `https://tiles.example.com/{z}/{x}/{y}.png` |
+| `tile_url_dark` | | mapas oscuros de ese proveedor (sin esto, los claros se muestran con colores invertidos) |
+| `tile_attribution` | | texto de atribución (HTML) de ese proveedor |
 | `title`, `language` | | título de la tarjeta; `es` o `en` (por defecto, el idioma del usuario) |
 
-Los mapas de fondo vienen de [OpenStreetMap](https://www.openstreetmap.org/copyright) y los carga el navegador,
-como cualquier mapa web: OpenStreetMap ve la zona que se muestra, no dónde está tu familia.
+Por defecto los mapas de fondo son de CARTO con datos de [OpenStreetMap](https://www.openstreetmap.org/copyright),
+el mismo proveedor que usa la tarjeta de mapa de Home Assistant, así que funcionan en la red local y también por
+Nabu Casa o cualquier otra dirección remota. Los carga el navegador, como cualquier mapa web: el proveedor ve la
+zona que se muestra, no dónde está tu familia. Si usas `tile_url`, respeta las condiciones de uso de ese
+proveedor; los servidores de OpenStreetMap (`tile.openstreetmap.org`) bloquean dominios compartidos como
+`ui.nabu.casa`.
 
 ### Ranking semanal
 
@@ -245,4 +252,5 @@ Haz una prueba con `family_location.sos` (o el botón) para confirmar que suena.
 - La tarjeta de mapa dibuja con [Leaflet](https://leafletjs.com) 1.9.4 (licencia BSD 2-Clause,
   © Volodymyr Agafonkin y CloudMade), incluido en `custom_components/family_location/frontend/leaflet/` con su
   licencia.
-- Datos y mapas © colaboradores de [OpenStreetMap](https://www.openstreetmap.org/copyright).
+- Datos © colaboradores de [OpenStreetMap](https://www.openstreetmap.org/copyright); mapas de fondo ©
+  [CARTO](https://carto.com/attributions).
