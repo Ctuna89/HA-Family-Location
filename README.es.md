@@ -23,7 +23,7 @@ Sin cuentas, sin suscripción y sin que tu ubicación pase por servidores de ter
 | 🏆 **Ranking semanal** | Distancia, viajes, velocidad máxima y excesos de cada persona en la semana (lunes a domingo), más un ranking del círculo |
 | 🔋 **Batería baja** | Aviso al círculo cuando el teléfono de alguien baja del umbral |
 | ✅ **Check-in** | Botón (y acción) que avisa a todos «James está en Casa» o «cerca de Av. Matta 100» |
-| 🆘 **Pedir ayuda** | Botón que envía una alerta **crítica** (suena aunque el teléfono esté en silencio) con un enlace a la ubicación |
+| 🆘 **Pedir ayuda** | Botón que envía una alerta **crítica** (suena aunque el teléfono esté en silencio o en No molestar, una vez que cada teléfono lo permite: ver más abajo) con un enlace a la ubicación |
 | 🗺️ **También tus zonas de HA** | Si alguien está dentro de una zona de Home Assistant que no agregaste como lugar (por ejemplo «Gimnasio»), se muestra el nombre de la zona en vez de la dirección. Opcional, activado por defecto |
 | 📫 **Dirección aproximada** | Opcional: cuando alguien está detenido fuera de sus lugares y zonas se muestra la dirección |
 | 🤖 **Eventos para automatizar** | Cada llegada, salida, viaje, exceso, batería, check-in y SOS genera el evento `family_location_event` |
@@ -211,6 +211,20 @@ content: >
   máx. {{ r.max_speed_kmh }} km/h · {{ r.speeding }} excesos
   {% endfor %}
 ```
+
+## Que «Pedir ayuda» suene en silencio
+
+Cada teléfono que recibe avisos tiene que permitirlo una vez:
+
+- **iPhone:** *Ajustes → Notificaciones → Home Assistant →* activa **Alertas críticas**.
+- **Android:** el aviso suena como una alarma al volumen máximo (canal `alarm_stream_max`). Después de recibir
+  el primero:
+  1. *Ajustes → Apps → Home Assistant → Notificaciones →* abre el canal **alarm_stream_max** y activa
+     **Ignorar No molestar**.
+  2. En *Ajustes → Sonido → No molestar*, revisa que las **Alarmas** estén permitidas (en «Silencio total» no
+     lo están).
+
+Haz una prueba con `family_location.sos` (o el botón) para confirmar que suena.
 
 ## Privacidad
 

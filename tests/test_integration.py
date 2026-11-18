@@ -142,7 +142,8 @@ async def test_check_in_and_sos(hass: HomeAssistant):
         await hass.async_block_till_done()
     assert calls[0].data["message"] == "James está cerca de Av. Matta 100, Santiago."
     assert calls[1].data["title"] == "🆘 James pide ayuda"
-    assert calls[1].data["data"]["push"]["sound"]["critical"] == 1
+    assert calls[1].data["data"]["push"]["sound"]["critical"] == 1        # iPhone: critical alert
+    assert calls[1].data["data"]["channel"] == "alarm_stream_max"          # Android: alarm at max volume
     assert hass.states.get("sensor.james_lugar").state == "Av. Matta 100, Santiago"
 
 

@@ -25,7 +25,7 @@ the **Home Assistant Companion app** on each phone, and everything is computed i
 | 🏆 **Weekly leaderboard** | Distance, trips, top speed and speeding events per person this week (Monday to Sunday), plus a circle leaderboard |
 | 🔋 **Low battery** | The circle is alerted when someone's phone drops below the threshold |
 | ✅ **Check-in** | A button (and action) that tells everyone «James is at Home» or «near 742 Evergreen Terrace» |
-| 🆘 **Ask for help** | A button that sends a **critical** alert (rings even on silent) with a link to the location |
+| 🆘 **Ask for help** | A button that sends a **critical** alert (rings even on silent or Do Not Disturb, once each phone allows it — see below) with a link to the location |
 | 🗺️ **Your HA zones too** | If someone is inside a Home Assistant zone you didn't add as a place (e.g. «Gym»), their place shows the zone name instead of a street address. Optional, on by default |
 | 📫 **Approximate address** | Optional: when someone is stopped away from their places and zones, their address is shown |
 | 🤖 **Events for automations** | Every arrival, departure, trip, speeding, battery, check-in and SOS fires the `family_location_event` event |
@@ -212,6 +212,19 @@ content: >
   top {{ r.max_speed_kmh }} km/h · {{ r.speeding }} speeding
   {% endfor %}
 ```
+
+## Making «Ask for help» ring on silent
+
+Each phone that receives alerts has to allow it once:
+
+- **iPhone:** *Settings → Notifications → Home Assistant →* turn on **Critical Alerts**.
+- **Android:** the alert plays as an alarm at maximum volume (the `alarm_stream_max` channel). After the first
+  one arrives:
+  1. *Settings → Apps → Home Assistant → Notifications →* open the **alarm_stream_max** channel and turn on
+     **Override Do Not Disturb**.
+  2. In *Settings → Sound → Do Not Disturb*, make sure **Alarms** are allowed (they're not in «Total silence»).
+
+Send a test with `family_location.sos` (or the button) to check it rings.
 
 ## Privacy
 
