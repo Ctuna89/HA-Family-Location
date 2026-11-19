@@ -591,7 +591,7 @@ class CircleEngine:
             data.update({"url": url, "clickAction": url})
         if event_type == EV_SOS:
             data.update({
-                "priority": "high", "ttl": 0, "channel": "alarm_stream_max",   # Android: alarm sound at max volume
+                "priority": "high", "ttl": 0, "channel": "alarm_stream",   # Android: the only channel the app plays as an alarm
                 "push": {"sound": {"name": "default", "critical": 1, "volume": 1.0},
                          "interruption-level": "critical"},
             })

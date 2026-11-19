@@ -226,11 +226,12 @@ content: >
 Each phone that receives alerts has to allow it once:
 
 - **iPhone:** *Settings → Notifications → Home Assistant →* turn on **Critical Alerts**.
-- **Android:** the alert plays as an alarm at maximum volume (the `alarm_stream_max` channel). After the first
-  one arrives:
-  1. *Settings → Apps → Home Assistant → Notifications →* open the **alarm_stream_max** channel and turn on
+- **Android:** the alert plays as an alarm, at the **alarm volume**, even with the ringer off (the
+  `alarm_stream` channel). After the first one arrives:
+  1. *Settings → Apps → Home Assistant → Notifications →* open the **alarm_stream** channel and turn on
      **Override Do Not Disturb**.
   2. In *Settings → Sound → Do Not Disturb*, make sure **Alarms** are allowed (they're not in «Total silence»).
+  3. Keep the alarm volume up: that's the volume it rings at.
 
 Send a test with `family_location.sos` (or the button) to check it rings.
 

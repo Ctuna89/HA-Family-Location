@@ -225,12 +225,13 @@ content: >
 Cada teléfono que recibe avisos tiene que permitirlo una vez:
 
 - **iPhone:** *Ajustes → Notificaciones → Home Assistant →* activa **Alertas críticas**.
-- **Android:** el aviso suena como una alarma al volumen máximo (canal `alarm_stream_max`). Después de recibir
-  el primero:
-  1. *Ajustes → Apps → Home Assistant → Notificaciones →* abre el canal **alarm_stream_max** y activa
+- **Android:** el aviso suena como una alarma, al **volumen de alarma**, aunque el timbre esté apagado (canal
+  `alarm_stream`). Después de recibir el primero:
+  1. *Ajustes → Apps → Home Assistant → Notificaciones →* abre el canal **alarm_stream** y activa
      **Ignorar No molestar**.
   2. En *Ajustes → Sonido → No molestar*, revisa que las **Alarmas** estén permitidas (en «Silencio total» no
      lo están).
+  3. Mantén alto el volumen de alarma: es el volumen al que suena.
 
 Haz una prueba con `family_location.sos` (o el botón) para confirmar que suena.
 
