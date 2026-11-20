@@ -6,8 +6,10 @@
 salida para toda la familia («James llegó a casa», «Janet llegó al trabajo»), quién está en movimiento,
 viajes con distancia y velocidad máxima, avisos de exceso de velocidad, batería baja, check-in y botón de ayuda.
 
-Sin cuentas, sin suscripción y sin que tu ubicación pase por servidores de terceros: la posición la entrega la
-**app de Home Assistant** (Companion) del celular de cada uno, y todo se calcula en tu Home Assistant.
+Sin cuentas ni suscripción: la posición la entrega la **app de Home Assistant** (Companion) del celular de cada
+uno, y todo (lugares, viajes, excesos de velocidad, avisos) se calcula en tu Home Assistant. Algunas funciones
+opcionales buscan direcciones o tipos de vía en OpenStreetMap; en [Privacidad](#privacidad) está exactamente qué
+se envía, cuándo, y el interruptor que lo apaga todo.
 
 ## Qué incluye
 
@@ -25,7 +27,7 @@ Sin cuentas, sin suscripción y sin que tu ubicación pase por servidores de ter
 | ✅ **Check-in** | Botón (y acción) que avisa a todos «James está en Casa» o «cerca de Av. Matta 100» |
 | 🆘 **Pedir ayuda** | Botón que envía una alerta **crítica** (suena aunque el teléfono esté en silencio o en No molestar, una vez que cada teléfono lo permite: ver más abajo) con un enlace a la ubicación |
 | 🗺️ **También tus zonas de HA** | Si alguien está dentro de una zona de Home Assistant que no agregaste como lugar (por ejemplo «Gimnasio»), se muestra el nombre de la zona en vez de la dirección. Opcional, activado por defecto |
-| 📫 **Dirección aproximada** | Opcional: cuando alguien está detenido fuera de sus lugares y zonas se muestra la dirección |
+| 📫 **Dirección aproximada** | Opcional: cuando alguien está detenido fuera de sus lugares y zonas se muestra la dirección (se busca en OpenStreetMap, ver [Privacidad](#privacidad)) |
 | 🤖 **Eventos para automatizar** | Cada llegada, salida, viaje, exceso, batería, check-in y SOS genera el evento `family_location_event` |
 
 ## Requisitos
@@ -64,7 +66,8 @@ Sin cuentas, sin suscripción y sin que tu ubicación pase por servidores de ter
      el mismo tramo no se consulta dos veces. Mientras no se sabe el tipo de vía, se usa el límite más alto (el
      de autopista), así una vía desconocida nunca genera un falso aviso.
 4. **Opciones generales** (botón *Configurar*): qué avisos de seguridad se envían y a quién, umbral de batería,
-   y la sensibilidad de la detección de viajes.
+   la sensibilidad de la detección de viajes, y qué se puede consultar en OpenStreetMap (ver
+   [Privacidad](#privacidad)).
 
 Nadie recibe sus propios avisos (se puede cambiar en las opciones).
 
@@ -237,11 +240,33 @@ Haz una prueba con `family_location.sos` (o el botón) para confirmar que suena.
 
 ## Privacidad
 
-- La ubicación se queda en tu Home Assistant.
-- Solo se consulta OpenStreetMap (Nominatim) para buscar la dirección de un lugar al crearlo y, si la opción
-  está activada, para mostrar la dirección de alguien detenido fuera de sus lugares. Puedes desactivarla.
-- Si defines límites separados de calle y autopista para alguien, también se consulta a OpenStreetMap el tipo
-  de vía donde está, solo mientras supera su límite de calle. Deja el límite de autopista en 0 para evitarlo.
+**Siempre local.** El seguimiento, los lugares, las llegadas y salidas, los viajes, los excesos de velocidad con
+un solo límite, la batería, las estadísticas semanales, las notificaciones (van de tu Home Assistant a los
+celulares de tu familia por el servicio de avisos habitual de la app Companion) y el historial se quedan en tu
+Home Assistant. Sin cuentas ni analítica.
+
+**Se envía al servicio Nominatim de OpenStreetMap**, solo en estos casos:
+
+| Qué se envía | Cuándo | ¿Automático? | Lo controla |
+|---|---|---|---|
+| La dirección que escribes, más una zona de búsqueda redondeada a ~25 km alrededor de tu casa (nunca su ubicación exacta) | Al agregar o editar un lugar por dirección | No, lo inicias tú | *Usar OpenStreetMap (Nominatim)* |
+| Las coordenadas de un integrante | Cuando está detenido fuera de sus lugares y zonas, y en check-ins y pedidos de ayuda fuera de ellos, para mostrar una dirección aproximada | Sí | *Mostrar la dirección cuando alguien está fuera de sus lugares* (y el interruptor general) |
+| Las coordenadas de un integrante | Solo para integrantes con límite de **autopista**, mientras superan su límite de calle, para saber si van por autopista (se guarda por tramo de ~100 m) | Sí | El límite de autopista del integrante (0 = nunca) y el interruptor general |
+
+- **Interruptor general:** *Configurar → Usar OpenStreetMap (Nominatim)*. Apagado, ninguna ubicación ni
+  dirección sale de tu Home Assistant. Lo que sigue funcionando: todo lo de «siempre local»; los lugares se
+  marcan en el mapa o se toman de una zona en vez de buscarlos por dirección; el sensor de lugar muestra el
+  lugar, la zona o «fuera» en vez de una dirección; el check-in y el pedido de ayuda llevan el enlace al mapa
+  en vez de la dirección; y el límite de calle se usa en todas partes (el de autopista se ignora).
+- **Nominatim propio:** completa *Servidor Nominatim propio* (por ejemplo `http://192.168.1.10:8080`) y no se
+  envía nada al servidor público.
+- Las consultas al servidor público se limitan a una por segundo e identifican a esta integración, como pide su
+  [política de uso](https://operations.osmfoundation.org/policies/nominatim/). Esa política también pide no
+  enviar datos personales: nunca se envían nombres ni identidades, solo coordenadas o la dirección que
+  escribiste, pero si consideras que incluso eso es personal, apaga el interruptor general o usa tu propio
+  servidor.
+- **Tarjeta de mapa:** los mapas pasan por el proxy de mapas de Home Assistant; OpenStreetMap ve la zona del
+  mapa que se muestra, no dónde está tu familia.
 
 ## Lo que no hace (todavía)
 

@@ -43,6 +43,8 @@ from .const import (
     CONF_RECEIVE_ALERTS,
     CONF_RECIPIENTS,
     CONF_REVERSE_GEOCODE,
+    CONF_USE_NOMINATIM,
+    CONF_NOMINATIM_URL,
     CONF_SHOW_ZONES,
     CONF_SAFETY_RECIPIENTS,
     CONF_SPEED_LIMIT,
@@ -196,7 +198,8 @@ class CircleEngine:
     async def async_start(self) -> None:
         stored = await self._store.async_load() or {}
         saved = stored.get("members") or {}
-        self.addresses = dict(stored.get("addresses") or {})
+        # addresses are only kept (and shown) while address lookups are allowed
+        self.addresses = dict(stored.get("addresses") or {}) if self.addresses_allowed else {}
         for item in stored.get("roads") or []:
             try:
                 lat, lon, road, when = item
@@ -259,10 +262,26 @@ class CircleEngine:
         return []
 
     # ------------------------------------------------------------------ options
+    # ------------------------------------------------------------------ external services
+    @property
+    def nominatim_on(self) -> bool:
+        """Whether any request to OpenStreetMap (Nominatim) is allowed."""
+        return bool(self.options.get(CONF_USE_NOMINATIM, True))
+
+    @property
+    def nominatim_url(self) -> str:
+        return geocode.server_url(self.options.get(CONF_NOMINATIM_URL))
+
+    @property
+    def addresses_allowed(self) -> bool:
+        """Whether members' positions may be sent to Nominatim to get their address."""
+        return self.nominatim_on and bool(self.options.get(CONF_REVERSE_GEOCODE, True))
+
     def settings_for(self, member: MemberConfig, fix: Fix | None = None) -> Settings:
         o = self.options
         limit, road = member.speed_limit, None
-        if member.two_limits and fix is not None:
+        # Without OpenStreetMap lookups the road type can't be known: the street limit applies everywhere.
+        if member.two_limits and fix is not None and self.nominatim_on:
             # Street or highway limit depending on the road. While a new stretch is being looked up, the
             # member's last known road type is used; if nothing recent is known, the (higher) highway
             # limit is used, so an unknown road never causes a false alert.
@@ -299,7 +318,7 @@ class CircleEngine:
         """Looks up the road type only when someone with two limits goes faster than the street limit."""
         tracker = self.trackers[member.id]
         fix = tracker.last_fix
-        if not member.two_limits or fix is None or tracker.trip is None:
+        if not self.nominatim_on or not member.two_limits or fix is None or tracker.trip is None:
             return
         if (tracker.speed_kmh or 0) <= member.speed_limit:
             return
@@ -312,7 +331,8 @@ class CircleEngine:
 
     async def _lookup_road(self, member_id: str, cell: tuple[float, float], fix: Fix) -> None:
         try:
-            road = await geocode.road_type(async_get_clientsession(self.hass), fix.lat, fix.lon)
+            road = await geocode.road_type(async_get_clientsession(self.hass), fix.lat, fix.lon,
+                                           self.nominatim_url)
             if road is not None:
                 self._member_road[member_id] = (road, fix.time)
                 if len(self._road_cache) > ROAD_CACHE_MAX:
@@ -439,7 +459,7 @@ class CircleEngine:
     # ------------------------------------------------------------------ addresses
     @callback
     def _maybe_geocode(self, member_id: str) -> None:
-        if not self.options.get(CONF_REVERSE_GEOCODE, True) or member_id in self._geocoding:
+        if not self.addresses_allowed or member_id in self._geocoding:
             return
         tracker = self.trackers[member_id]
         if tracker.last_fix is None or tracker.places or tracker.trip is not None:
@@ -456,7 +476,8 @@ class CircleEngine:
             fix = self.trackers[member_id].last_fix
             if fix is None:
                 return
-            address = await geocode.reverse(async_get_clientsession(self.hass), fix.lat, fix.lon, self.language)
+            address = await geocode.reverse(async_get_clientsession(self.hass), fix.lat, fix.lon, self.language,
+                                            self.nominatim_url)
             if address:
                 self.addresses[member_id] = address
                 async_dispatcher_send(self.hass, self.signal)
@@ -624,8 +645,9 @@ class CircleEngine:
         fix = self.read_fix(member) or tracker.last_fix
         place = self.current_place_name(member_id) or self.current_zone_name(member_id)
         address = None
-        if fix is not None and place is None:
-            address = await geocode.reverse(async_get_clientsession(self.hass), fix.lat, fix.lon, self.language)
+        if fix is not None and place is None and self.addresses_allowed:
+            address = await geocode.reverse(async_get_clientsession(self.hass), fix.lat, fix.lon, self.language,
+                                            self.nominatim_url)
             if address:
                 self.addresses[member_id] = address
         where = messages.where_text(self.language, place, address or self.addresses.get(member_id))

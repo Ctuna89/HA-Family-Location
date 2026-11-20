@@ -43,6 +43,8 @@ CONF_NOTIFY_SPEEDING = "notify_speeding"
 CONF_NOTIFY_BATTERY = "notify_battery"
 CONF_SAFETY_RECIPIENTS = "safety_recipients"
 CONF_REVERSE_GEOCODE = "reverse_geocode"
+CONF_USE_NOMINATIM = "use_nominatim"     # master switch for every OpenStreetMap (Nominatim) request
+CONF_NOMINATIM_URL = "nominatim_url"     # empty = the public server
 CONF_SHOW_ZONES = "show_zones"   # show the HA zone name when not at a place
 CONF_NOTIFY_SELF = "notify_self"
 

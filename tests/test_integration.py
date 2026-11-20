@@ -354,7 +354,7 @@ async def test_street_and_highway_limits_and_leaderboard(hass: HomeAssistant, fr
     tracker(hass, "device_tracker.janet", *HOME)
     midway = (HOME[0] + WORK[0]) / 2
 
-    async def road(_session, lat, lon):
+    async def road(_session, lat, lon, base_url=None):
         return "highway" if lat < midway else "street"
 
     with patch("custom_components.family_location.engine.geocode.road_type", side_effect=road) as lookup:
@@ -380,3 +380,74 @@ async def test_street_and_highway_limits_and_leaderboard(hass: HomeAssistant, fr
     assert board.state == "James"
     assert [r["name"] for r in board.attributes["ranking"]] == ["James", "Janet"]
     assert board.attributes["most_speeding"] == "James"
+
+
+async def test_check_in_without_address_lookups(hass: HomeAssistant):
+    """#5: with address lookups off, check-in and SOS don't contact Nominatim and still work."""
+    hass.config.language = "en"
+    calls = capture_notify(hass, "mobile_app_janet")
+    capture_notify(hass, "mobile_app_james")
+    tracker(hass, "device_tracker.james", -33.45, -70.66)
+    tracker(hass, "device_tracker.janet", *HOME)
+    for options in ({"reverse_geocode": False}, {"use_nominatim": False}):
+        calls.clear()
+        with patch("custom_components.family_location.engine.geocode.reverse", return_value="Secret St 1") as rev:
+            entry = await setup_circle(hass, **options)
+            await hass.services.async_call(DOMAIN, "check_in", {"entity_id": "device_tracker.james"}, blocking=True)
+            await hass.services.async_call(DOMAIN, "sos", {"entity_id": "device_tracker.james"}, blocking=True)
+            await hass.async_block_till_done()
+            assert rev.call_count == 0
+        assert calls[0].data["message"] == "James is at an unknown location."
+        assert "maps" in calls[0].data["data"]["url"]            # the family still gets the map link
+        assert calls[1].data["title"] == "🆘 James needs help"
+        assert hass.states.get("sensor.james_place").state == "away"
+        await hass.config_entries.async_unload(entry.entry_id)
+        await hass.config_entries.async_remove(entry.entry_id)
+
+
+async def test_no_road_lookup_when_nominatim_is_off(hass: HomeAssistant, freezer):
+    """#6: with OpenStreetMap off there are no road lookups and the street limit applies everywhere."""
+    hass.config.language = "en"
+    janet = capture_notify(hass, "mobile_app_janet")
+    capture_notify(hass, "mobile_app_james")
+    tracker(hass, "device_tracker.james", *HOME)
+    tracker(hass, "device_tracker.janet", *HOME)
+    with patch("custom_components.family_location.engine.geocode.road_type", return_value="highway") as lookup:
+        await setup_circle(hass, speed_limit=60, highway_limit=120, use_nominatim=False)
+        for i in range(1, 6):
+            freezer.tick(timedelta(seconds=30))
+            tracker(hass, "device_tracker.james", HOME[0] + (WORK[0] - HOME[0]) * i / 10,
+                    HOME[1] + (WORK[1] - HOME[1]) * i / 10, speed=100)
+            await hass.async_block_till_done()
+        assert lookup.call_count == 0
+    speeding = [c.data["message"] for c in janet if c.data["title"].startswith("⚠️")]
+    assert speeding == ["James is going 100 km/h (limit 60 km/h)."]
+
+
+async def test_place_by_address_when_nominatim_is_off(hass: HomeAssistant):
+    hass.config.language = "en"
+    tracker(hass, "device_tracker.james", *HOME)
+    tracker(hass, "device_tracker.janet", *HOME)
+    entry = await setup_circle(hass, use_nominatim=False)
+    flow = await hass.config_entries.subentries.async_init((entry.entry_id, "place"), context={"source": "user"})
+    with patch("custom_components.family_location.config_flow.geocode.geocode") as search:
+        res = await hass.config_entries.subentries.async_configure(
+            flow["flow_id"], {"name": "School", "address": "Main St 1", "radius": 200})
+        assert search.call_count == 0
+    assert res["errors"] == {"address": "geocoding_disabled"}
+    res = await hass.config_entries.subentries.async_configure(flow["flow_id"], {"name": "School", "radius": 200})
+    assert res["step_id"] == "location"                      # marking it on the map still works
+
+
+async def test_options_reject_invalid_nominatim_url(hass: HomeAssistant):
+    tracker(hass, "device_tracker.james", *HOME)
+    tracker(hass, "device_tracker.janet", *HOME)
+    entry = await setup_circle(hass)
+    flow = await hass.config_entries.options.async_init(entry.entry_id)
+    res = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {**default_options(), "nominatim_url": "nominatim.lan"})
+    assert res["errors"] == {"nominatim_url": "invalid_url"}
+    res = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {**default_options(), "nominatim_url": " http://nominatim.lan:8080 "})
+    assert res["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["nominatim_url"] == "http://nominatim.lan:8080"

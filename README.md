@@ -6,8 +6,10 @@
 alerts for the whole family («James arrived home», «Janet arrived at work»), who is on the move, trips with
 distance and top speed, speeding alerts, low battery, check-in and an SOS button.
 
-No accounts, no subscription, and your location never goes through third-party servers: positions come from
-the **Home Assistant Companion app** on each phone, and everything is computed in your Home Assistant.
+No accounts and no subscription: positions come from the **Home Assistant Companion app** on each phone, and
+everything (places, trips, speeding, alerts) is computed in your Home Assistant. A few optional features look up
+addresses or road types on OpenStreetMap; [Privacy](#privacy) lists exactly what is sent, when, and the switch
+that turns it all off.
 
 [![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Ctuna89&repository=HA-Family-Location&category=integration)
 
@@ -27,7 +29,7 @@ the **Home Assistant Companion app** on each phone, and everything is computed i
 | ✅ **Check-in** | A button (and action) that tells everyone «James is at Home» or «near 742 Evergreen Terrace» |
 | 🆘 **Ask for help** | A button that sends a **critical** alert (rings even on silent or Do Not Disturb, once each phone allows it — see below) with a link to the location |
 | 🗺️ **Your HA zones too** | If someone is inside a Home Assistant zone you didn't add as a place (e.g. «Gym»), their place shows the zone name instead of a street address. Optional, on by default |
-| 📫 **Approximate address** | Optional: when someone is stopped away from their places and zones, their address is shown |
+| 📫 **Approximate address** | Optional: when someone is stopped away from their places and zones, their address is shown (looked up on OpenStreetMap, see [Privacy](#privacy)) |
 | 🤖 **Events for automations** | Every arrival, departure, trip, speeding, battery, check-in and SOS fires the `family_location_event` event |
 | 🌍 **Languages** | English and Spanish (notifications follow your Home Assistant language) |
 
@@ -65,8 +67,8 @@ the **Home Assistant Companion app** on each phone, and everything is computed i
      they're on a highway (motorway or expressway), and the matching limit is used. Results are cached, so
      the same stretch of road isn't looked up twice. Until the road type is known, the higher (highway) limit
      applies, so an unknown road never causes a false alert.
-4. **General options** (*Configure* button): which safety alerts are sent and to whom, battery threshold, and
-   trip detection sensitivity.
+4. **General options** (*Configure* button): which safety alerts are sent and to whom, battery threshold,
+   trip detection sensitivity, and what may be looked up on OpenStreetMap (see [Privacy](#privacy)).
 
 Nobody receives alerts about themselves (configurable in the options).
 
@@ -237,12 +239,31 @@ Send a test with `family_location.sos` (or the button) to check it rings.
 
 ## Privacy
 
-- Your location stays in your Home Assistant.
-- OpenStreetMap (Nominatim) is only queried to look up a place's address when you create it and, if the option
-  is on, to show the address of someone stopped away from their places. You can turn it off.
-- If you set separate street and highway limits for someone, OpenStreetMap is also asked for the road type at
-  their position, only while they're going faster than their street limit. Leave the highway limit at 0 to
-  avoid it.
+**Always local.** Tracking, places, arrivals and departures, trips, speeding with a single limit, battery,
+weekly stats, notifications (they go from your Home Assistant to your family's phones through the Companion
+app's usual push service) and the history all stay in your Home Assistant. No account, no analytics.
+
+**Sent to OpenStreetMap's Nominatim service**, only in these cases:
+
+| What is sent | When | Automatic? | Controlled by |
+|---|---|---|---|
+| The address you type, plus a search area rounded to ~25 km around your home (never its exact location) | When you add or edit a place by address | No, you start it | *Use OpenStreetMap (Nominatim)* |
+| A member's coordinates | When they're stopped away from their places and zones, and in check-ins and SOS alerts outside them, to show an approximate address | Yes | *Show the address when someone is away from their places* (and the master switch) |
+| A member's coordinates | Only for members with a **highway** speed limit, while they're going faster than their street limit, to know whether they're on a highway (cached per ~100 m stretch) | Yes | The member's highway limit (0 = never) and the master switch |
+
+- **Master switch:** *Configure → Use OpenStreetMap (Nominatim)*. When off, no location or address leaves your
+  Home Assistant. What still works: everything above under «always local»; places are marked on the map or
+  taken from a zone instead of looked up by address; the place sensor shows the place, the zone or «away»
+  instead of a street address; check-ins and SOS alerts carry the map link instead of an address; and the
+  street limit applies everywhere (the highway limit is ignored).
+- **Self-hosted Nominatim:** set *Self-hosted Nominatim server* (e.g. `http://192.168.1.10:8080`) and nothing
+  goes to the public server.
+- Requests to the public server are limited to one per second and identify this integration, as its
+  [usage policy](https://operations.osmfoundation.org/policies/nominatim/) asks. That policy also asks not to
+  send personal data: no names or identities are ever sent, only coordinates or the address you typed, but if
+  you consider even that personal, turn the master switch off or use your own server.
+- **Map card:** the tiles come through Home Assistant's own tile proxy; OpenStreetMap sees the map area being
+  displayed, not where your family is.
 
 ## Not supported (yet)
 

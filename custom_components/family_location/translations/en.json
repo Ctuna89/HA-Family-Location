@@ -33,16 +33,23 @@
           "stop_minutes": "Minutes stopped to end a trip",
           "start_distance": "Distance from resting point to start a trip",
           "max_accuracy": "Ignore positions less accurate than",
-          "show_zones": "Show the Home Assistant zone name when not at a place"
+          "show_zones": "Show the Home Assistant zone name when not at a place",
+          "use_nominatim": "Use OpenStreetMap (Nominatim)",
+          "nominatim_url": "Self-hosted Nominatim server (optional)"
         },
         "data_description": {
           "safety_recipients": "Empty = every other member.",
-          "reverse_geocode": "Queries OpenStreetMap with the position (only when the person is stopped away from their places).",
+          "reverse_geocode": "Sends the position to Nominatim when someone is stopped away from their places and zones, and in check-ins and SOS alerts. When off, those alerts only carry the map link.",
           "max_accuracy": "Avoids false alerts from inaccurate locations (e.g. cell towers).",
           "stop_minutes": "A trip ends only after this many minutes without moving: a traffic light or a jam doesn't end it.",
-          "show_zones": "If someone is inside a Home Assistant zone you didn't add as a place (e.g. «Gym»), the «Place» sensor shows the zone name instead of the address. It doesn't trigger arrival or departure alerts."
+          "show_zones": "If someone is inside a Home Assistant zone you didn't add as a place (e.g. «Gym»), the «Place» sensor shows the zone name instead of the address. It doesn't trigger arrival or departure alerts.",
+          "use_nominatim": "Master switch. When off, the integration sends no location or address outside your Home Assistant: no addresses are shown, the highway limit is ignored (the street limit applies) and places are marked on the map instead of looked up by address.",
+          "nominatim_url": "Empty = OpenStreetMap's public server. For example http://192.168.1.10:8080 if you run your own Nominatim."
         }
       }
+    },
+    "error": {
+      "invalid_url": "Must be an http:// or https:// address."
     }
   },
   "config_subentries": {
@@ -150,7 +157,8 @@
         }
       },
       "error": {
-        "address_not_found": "Address not found. Try adding the city, or leave it empty and mark it on the map."
+        "address_not_found": "Address not found. Try adding the city, or leave it empty and mark it on the map.",
+        "geocoding_disabled": "OpenStreetMap lookups are turned off in the options. Leave the address empty and mark the place on the map, or pick a zone."
       },
       "abort": {
         "reconfigure_successful": "Place updated."

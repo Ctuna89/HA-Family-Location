@@ -48,6 +48,8 @@ from .const import (
     CONF_RECEIVE_ALERTS,
     CONF_RECIPIENTS,
     CONF_REVERSE_GEOCODE,
+    CONF_USE_NOMINATIM,
+    CONF_NOMINATIM_URL,
     CONF_SHOW_ZONES,
     CONF_SAFETY_RECIPIENTS,
     CONF_SPEED_LIMIT,
@@ -182,6 +184,8 @@ def default_options() -> dict[str, Any]:
         CONF_NOTIFY_BATTERY: True,
         CONF_NOTIFY_TRIPS: False,
         CONF_NOTIFY_SELF: False,
+        CONF_USE_NOMINATIM: True,
+        CONF_NOMINATIM_URL: "",
         CONF_REVERSE_GEOCODE: True,
         CONF_SHOW_ZONES: True,
         CONF_SAFETY_RECIPIENTS: [],
@@ -198,9 +202,14 @@ class FamilyLocationOptionsFlow(OptionsFlow):
     """General alerts and trip detection sensitivity."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
         if user_input is not None:
-            return self.async_create_entry(data=user_input)
-        opts = {**default_options(), **self.config_entry.options}
+            url = (user_input.get(CONF_NOMINATIM_URL) or "").strip()
+            if url and not url.lower().startswith(("http://", "https://")):
+                errors[CONF_NOMINATIM_URL] = "invalid_url"
+            else:
+                return self.async_create_entry(data={**user_input, CONF_NOMINATIM_URL: url})
+        opts = {**default_options(), **self.config_entry.options, **(user_input or {})}
         members = member_options(self.config_entry)
         fields: dict[Any, Any] = {
             vol.Required(CONF_NOTIFY_SPEEDING, default=opts[CONF_NOTIFY_SPEEDING]): selector.BooleanSelector(),
@@ -212,14 +221,17 @@ class FamilyLocationOptionsFlow(OptionsFlow):
             ]): _multi_select(members),
             vol.Required(CONF_NOTIFY_SELF, default=opts[CONF_NOTIFY_SELF]): selector.BooleanSelector(),
             vol.Required(CONF_SHOW_ZONES, default=opts[CONF_SHOW_ZONES]): selector.BooleanSelector(),
+            vol.Required(CONF_USE_NOMINATIM, default=opts[CONF_USE_NOMINATIM]): selector.BooleanSelector(),
             vol.Required(CONF_REVERSE_GEOCODE, default=opts[CONF_REVERSE_GEOCODE]): selector.BooleanSelector(),
+            vol.Optional(CONF_NOMINATIM_URL, default=opts[CONF_NOMINATIM_URL] or ""): selector.TextSelector(
+                selector.TextSelectorConfig(type=selector.TextSelectorType.URL)),
             vol.Required(CONF_MOVING_SPEED, default=opts[CONF_MOVING_SPEED]): _number(3, 30, 1, "km/h"),
             vol.Required(CONF_DRIVING_SPEED, default=opts[CONF_DRIVING_SPEED]): _number(10, 60, 1, "km/h"),
             vol.Required(CONF_STOP_MINUTES, default=opts[CONF_STOP_MINUTES]): _number(1, 30, 1, "min"),
             vol.Required(CONF_START_DISTANCE, default=opts[CONF_START_DISTANCE]): _number(100, 2000, 10, "m"),
             vol.Required(CONF_MAX_ACCURACY, default=opts[CONF_MAX_ACCURACY]): _number(20, 2000, 10, "m"),
         }
-        return self.async_show_form(step_id="init", data_schema=vol.Schema(fields))
+        return self.async_show_form(step_id="init", data_schema=vol.Schema(fields), errors=errors)
 
 
 # ---------------------------------------------------------------------- member
@@ -314,10 +326,15 @@ class PlaceSubentryFlow(ConfigSubentryFlow):
                 return await self.async_step_alerts()
             self._data.pop(CONF_ZONE, None)
             previous = self._data.get(CONF_LOCATION)
-            if address and (previous is None or address != self._data.get("_geocoded")):
+            options = self._get_entry().options
+            if address and (previous is None or address != self._data.get("_geocoded")) \
+                    and not options.get(CONF_USE_NOMINATIM, True):
+                errors[CONF_ADDRESS] = "geocoding_disabled"
+            elif address and (previous is None or address != self._data.get("_geocoded")):
                 home = (self.hass.config.latitude, self.hass.config.longitude)
                 result = await geocode.geocode(async_get_clientsession(self.hass), address,
-                                               self.hass.config.language or "es", near=home)
+                                               self.hass.config.language or "es", near=home,
+                                               base_url=options.get(CONF_NOMINATIM_URL))
                 if result is None:
                     errors[CONF_ADDRESS] = "address_not_found"
                 else:
@@ -336,9 +353,11 @@ class PlaceSubentryFlow(ConfigSubentryFlow):
         radius = (self._data.get(CONF_LOCATION) or {}).get(CONF_RADIUS, DEFAULT_RADIUS)
         schema = vol.Schema({
             vol.Required(CONF_NAME, **_default(self._title)): selector.TextSelector(),
-            vol.Optional(CONF_ADDRESS, **_default(self._data.get(CONF_ADDRESS))): selector.TextSelector(),
-            vol.Optional(CONF_ZONE, **_default(self._data.get(CONF_ZONE))): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="zone")),
+            # suggested (not default) values, so clearing the field really clears it
+            vol.Optional(CONF_ADDRESS, description={"suggested_value": self._data.get(CONF_ADDRESS) or None}):
+                selector.TextSelector(),
+            vol.Optional(CONF_ZONE, description={"suggested_value": self._data.get(CONF_ZONE) or None}):
+                selector.EntitySelector(selector.EntitySelectorConfig(domain="zone")),
             vol.Required(CONF_RADIUS, default=radius): _number(30, 5000, 10, "m"),
         })
         return self.async_show_form(step_id=step_id, data_schema=schema, errors=errors)
