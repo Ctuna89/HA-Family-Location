@@ -75,8 +75,21 @@ def where_text(lang: str, place: str | None, address: str | None) -> str:
     return w["unknown"]
 
 
+def format_time(when: datetime, lang: str, time_format: str = "24h") -> str:
+    """«18:32», or on a 12-hour clock «6:32 PM» (English) / «6:32 p. m.» (Spanish)."""
+    if time_format != "12h":
+        return when.strftime("%H:%M")
+    hour = when.hour % 12 or 12
+    if lang == "es":
+        suffix = "a. m." if when.hour < 12 else "p. m."
+    else:
+        suffix = "AM" if when.hour < 12 else "PM"
+    return f"{hour}:{when.minute:02d} {suffix}"
+
+
 def build(event_type: str, lang: str, name: str, when: datetime, place: str | None = None,
-          data: dict[str, Any] | None = None, where: str = "", note: str = "") -> tuple[str, str]:
+          data: dict[str, Any] | None = None, where: str = "", note: str = "",
+          time_format: str = "24h") -> tuple[str, str]:
     """Title and message of a notification."""
     data = data or {}
     w = WORDS[lang]
@@ -92,7 +105,7 @@ def build(event_type: str, lang: str, name: str, when: datetime, place: str | No
     values = {
         "name": name,
         "place": place or "",
-        "time": when.strftime("%H:%M"),
+        "time": format_time(when, lang, time_format),
         "from_txt": w["from"].format(origin) if origin else "",
         "distance": _num(float(data.get("distance_km") or 0), lang),
         "duration": _duration(float(data.get("duration_min") or 0)),

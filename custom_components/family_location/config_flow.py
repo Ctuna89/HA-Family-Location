@@ -48,6 +48,7 @@ from .const import (
     CONF_RECEIVE_ALERTS,
     CONF_RECIPIENTS,
     CONF_REVERSE_GEOCODE,
+    CONF_TIME_FORMAT,
     CONF_USE_NOMINATIM,
     CONF_NOMINATIM_URL,
     CONF_SHOW_ZONES,
@@ -68,6 +69,8 @@ from .const import (
     DOMAIN,
     SUBENTRY_MEMBER,
     SUBENTRY_PLACE,
+    TIME_12H,
+    TIME_24H,
 )
 
 CONF_MEMBERS = "members"
@@ -184,6 +187,7 @@ def default_options() -> dict[str, Any]:
         CONF_NOTIFY_BATTERY: True,
         CONF_NOTIFY_TRIPS: False,
         CONF_NOTIFY_SELF: False,
+        CONF_TIME_FORMAT: TIME_24H,
         CONF_USE_NOMINATIM: True,
         CONF_NOMINATIM_URL: "",
         CONF_REVERSE_GEOCODE: True,
@@ -220,6 +224,9 @@ class FamilyLocationOptionsFlow(OptionsFlow):
                 m for m in opts[CONF_SAFETY_RECIPIENTS] if m in {o["value"] for o in members}
             ]): _multi_select(members),
             vol.Required(CONF_NOTIFY_SELF, default=opts[CONF_NOTIFY_SELF]): selector.BooleanSelector(),
+            vol.Required(CONF_TIME_FORMAT, default=opts[CONF_TIME_FORMAT]): selector.SelectSelector(
+                selector.SelectSelectorConfig(options=[TIME_24H, TIME_12H], translation_key=CONF_TIME_FORMAT,
+                                              mode=selector.SelectSelectorMode.LIST)),
             vol.Required(CONF_SHOW_ZONES, default=opts[CONF_SHOW_ZONES]): selector.BooleanSelector(),
             vol.Required(CONF_USE_NOMINATIM, default=opts[CONF_USE_NOMINATIM]): selector.BooleanSelector(),
             vol.Required(CONF_REVERSE_GEOCODE, default=opts[CONF_REVERSE_GEOCODE]): selector.BooleanSelector(),

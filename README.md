@@ -68,7 +68,8 @@ that turns it all off.
      the same stretch of road isn't looked up twice. Until the road type is known, the higher (highway) limit
      applies, so an unknown road never causes a false alert.
 4. **General options** (*Configure* button): which safety alerts are sent and to whom, battery threshold,
-   trip detection sensitivity, and what may be looked up on OpenStreetMap (see [Privacy](#privacy)).
+   12- or 24-hour clock in notifications, trip detection sensitivity, and what may be looked up on
+   OpenStreetMap (see [Privacy](#privacy)).
 
 Nobody receives alerts about themselves (configurable in the options).
 

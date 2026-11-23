@@ -66,8 +66,8 @@ se envía, cuándo, y el interruptor que lo apaga todo.
      el mismo tramo no se consulta dos veces. Mientras no se sabe el tipo de vía, se usa el límite más alto (el
      de autopista), así una vía desconocida nunca genera un falso aviso.
 4. **Opciones generales** (botón *Configurar*): qué avisos de seguridad se envían y a quién, umbral de batería,
-   la sensibilidad de la detección de viajes, y qué se puede consultar en OpenStreetMap (ver
-   [Privacidad](#privacidad)).
+   formato de hora de 12 o 24 horas en los avisos, la sensibilidad de la detección de viajes, y qué se puede
+   consultar en OpenStreetMap (ver [Privacidad](#privacidad)).
 
 Nadie recibe sus propios avisos (se puede cambiar en las opciones).
 

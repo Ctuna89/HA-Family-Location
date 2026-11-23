@@ -35,7 +35,8 @@
           "max_accuracy": "Ignorar posiciones con precisión peor que",
           "show_zones": "Mostrar el nombre de la zona de Home Assistant cuando no está en un lugar",
           "use_nominatim": "Usar OpenStreetMap (Nominatim)",
-          "nominatim_url": "Servidor Nominatim propio (opcional)"
+          "nominatim_url": "Servidor Nominatim propio (opcional)",
+          "time_format": "Formato de hora en los avisos"
         },
         "data_description": {
           "safety_recipients": "Vacío = todos los demás integrantes.",
@@ -260,6 +261,14 @@
   "exceptions": {
     "not_a_member": {
       "message": "{entity_id} no es integrante de ningún círculo."
+    }
+  },
+  "selector": {
+    "time_format": {
+      "options": {
+        "24h": "24 horas (18:32)",
+        "12h": "12 horas (6:32 p. m.)"
+      }
     }
   }
 }

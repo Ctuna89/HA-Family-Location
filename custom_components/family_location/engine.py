@@ -43,6 +43,7 @@ from .const import (
     CONF_RECEIVE_ALERTS,
     CONF_RECIPIENTS,
     CONF_REVERSE_GEOCODE,
+    CONF_TIME_FORMAT,
     CONF_USE_NOMINATIM,
     CONF_NOMINATIM_URL,
     CONF_SHOW_ZONES,
@@ -76,6 +77,7 @@ from .const import (
     TOGETHER_WINDOW_MIN,
     SUBENTRY_MEMBER,
     SUBENTRY_PLACE,
+    TIME_24H,
 )
 from .tracker import Event, Fix, MemberTracker, Place, Settings, distance_m
 
@@ -263,6 +265,10 @@ class CircleEngine:
 
     # ------------------------------------------------------------------ options
     # ------------------------------------------------------------------ external services
+    @property
+    def time_format(self) -> str:
+        return str(self.options.get(CONF_TIME_FORMAT, TIME_24H))
+
     @property
     def nominatim_on(self) -> bool:
         """Whether any request to OpenStreetMap (Nominatim) is allowed."""
@@ -563,7 +569,7 @@ class CircleEngine:
             if not enabled:
                 continue
             title, message = messages.build(event.type, self.language, member.name, event.time,
-                                            event.place_name, event.data)
+                                            event.place_name, event.data, time_format=self.time_format)
             point = (fix.lat, fix.lon) if fix else None
             if event.type in COMPANION_EVENTS:
                 self._send_later(member, chosen, event, title, message, point)
@@ -653,7 +659,8 @@ class CircleEngine:
         where = messages.where_text(self.language, place, address or self.addresses.get(member_id))
         event_type = EV_SOS if sos else EV_CHECK_IN
         now = dt_util.now()
-        title, message = messages.build(event_type, self.language, member.name, now, place, where=where, note=note)
+        title, message = messages.build(event_type, self.language, member.name, now, place, where=where, note=note,
+                                        time_format=self.time_format)
         self.hass.bus.async_fire(EVENT_NAME, {
             "type": event_type, "member": member.name, "member_id": member.id, "entity_id": member.entity_id,
             "place": place, "address": address, "note": note, "time": now.isoformat(),

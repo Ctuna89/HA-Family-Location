@@ -43,6 +43,9 @@ CONF_NOTIFY_SPEEDING = "notify_speeding"
 CONF_NOTIFY_BATTERY = "notify_battery"
 CONF_SAFETY_RECIPIENTS = "safety_recipients"
 CONF_REVERSE_GEOCODE = "reverse_geocode"
+CONF_TIME_FORMAT = "time_format"   # clock used in notification texts
+TIME_24H = "24h"
+TIME_12H = "12h"
 CONF_USE_NOMINATIM = "use_nominatim"     # master switch for every OpenStreetMap (Nominatim) request
 CONF_NOMINATIM_URL = "nominatim_url"     # empty = the public server
 CONF_SHOW_ZONES = "show_zones"   # show the HA zone name when not at a place

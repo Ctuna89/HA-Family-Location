@@ -26,3 +26,14 @@ def test_language_defaults_to_english():
     assert messages.lang_of("en") == "en"
     assert messages.lang_of("de") == "en"
     assert messages.lang_of(None) == "en"
+
+
+def test_twelve_hour_clock():
+    t = datetime(2026, 1, 1, 18, 32)
+    assert messages.format_time(t, "en", "12h") == "6:32 PM"
+    assert messages.format_time(t, "es", "12h") == "6:32 p. m."
+    assert messages.format_time(datetime(2026, 1, 1, 0, 5), "en", "12h") == "12:05 AM"
+    assert messages.format_time(datetime(2026, 1, 1, 12, 0), "en", "12h") == "12:00 PM"
+    assert messages.format_time(t, "en", "24h") == "18:32"
+    _, msg = messages.build("arrive", "en", "James", t, "Home", time_format="12h")
+    assert msg == "James arrived at Home at 6:32 PM."

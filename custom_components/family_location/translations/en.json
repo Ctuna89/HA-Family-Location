@@ -35,7 +35,8 @@
           "max_accuracy": "Ignore positions less accurate than",
           "show_zones": "Show the Home Assistant zone name when not at a place",
           "use_nominatim": "Use OpenStreetMap (Nominatim)",
-          "nominatim_url": "Self-hosted Nominatim server (optional)"
+          "nominatim_url": "Self-hosted Nominatim server (optional)",
+          "time_format": "Clock format in notifications"
         },
         "data_description": {
           "safety_recipients": "Empty = every other member.",
@@ -260,6 +261,14 @@
   "exceptions": {
     "not_a_member": {
       "message": "{entity_id} is not a member of any circle."
+    }
+  },
+  "selector": {
+    "time_format": {
+      "options": {
+        "24h": "24-hour (18:32)",
+        "12h": "12-hour (6:32 PM)"
+      }
     }
   }
 }

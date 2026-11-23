@@ -451,3 +451,20 @@ async def test_options_reject_invalid_nominatim_url(hass: HomeAssistant):
         flow["flow_id"], {**default_options(), "nominatim_url": " http://nominatim.lan:8080 "})
     assert res["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options["nominatim_url"] == "http://nominatim.lan:8080"
+
+
+async def test_twelve_hour_clock_option(hass: HomeAssistant, freezer):
+    """#7: notifications can use a 12-hour clock."""
+    hass.config.language = "en"
+    freezer.move_to("2026-11-23T18:32:00-08:00")
+    janet = capture_notify(hass, "mobile_app_janet")
+    capture_notify(hass, "mobile_app_james")
+    tracker(hass, "device_tracker.james", *HOME)
+    tracker(hass, "device_tracker.janet", *HOME)
+    await setup_circle(hass, speed_limit=0, time_format="12h")
+    await hass.services.async_call(DOMAIN, "check_in", {"entity_id": "device_tracker.james"}, blocking=True)
+    tracker(hass, "device_tracker.james", HOME[0] + 0.01, HOME[1], speed=40)   # leaves home
+    await hass.async_block_till_done()
+    await advance(hass, freezer, 120)
+    leave = [c.data["message"] for c in janet if "left" in c.data["message"]]
+    assert leave == ["James left Casa at 6:32 PM."]
